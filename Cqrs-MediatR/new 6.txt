@@ -1,0 +1,66 @@
+using Boss.Domain.Models.Core;
+using System.Data.Entity.ModelConfiguration;
+
+namespace Boss.Infrastructure.Core.Data.Mapping
+{
+    public class RabbitStagingMessageMap : EntityTypeConfiguration<RabbitStagingMessage>
+    {
+        public RabbitStagingMessageMap()
+        {
+            // Primary Key
+            HasKey(t => t.RabbitStagingMessageId);
+
+            // Properties
+            Property(t => t.OrderId);
+
+            Property(t => t.OriginatingSystem)
+               .IsRequired()
+               .IsFixedLength();
+
+            Property(t => t.CorrelationId)
+                .IsRequired()
+                .IsFixedLength();
+
+            Property(t => t.SendTo)
+                .IsRequired()
+                .IsFixedLength();
+
+            Property(t => t.ReplyTo)
+              .IsRequired()
+              .IsFixedLength();
+
+            Property(t => t.CreatedDate)
+             .IsRequired();
+
+            Property(t => t.ContentType)
+                .IsRequired()
+                .IsFixedLength();
+
+            Property(t => t.OrderNumber)
+                .IsFixedLength()
+                .IsRequired();
+
+            Property(t => t.RelatedVendorServiceRequest)
+               .IsRequired()
+               .IsFixedLength();
+
+            Property(t => t.XmlOrder)
+                .IsRequired();
+
+
+            // Table & Column Mappings
+            ToTable("tblRabbitStagingMessages");
+            Property(t => t.RabbitStagingMessageId).HasColumnName("RabbitStagingMessageId");
+            Property(t => t.OrderId).HasColumnName("OrderId");
+            Property(t => t.OriginatingSystem).HasColumnName("OriginatingSystem");
+            Property(t => t.CorrelationId).HasColumnName("CorrrelationId");
+            Property(t => t.SendTo).HasColumnName("SendTo");
+            Property(t => t.ReplyTo).HasColumnName("ReplyTo");
+            Property(t => t.CreatedDate).HasColumnName("CreateDate");
+            Property(t => t.ContentType).HasColumnName("ContentType");
+            Property(t => t.OrderNumber).HasColumnName("OrderNumber");
+            Property(t => t.RelatedVendorServiceRequest).HasColumnName("RelatedVendorServiceRequest");
+            Property(t => t.XmlOrder).HasColumnName("XmlOrder");
+        }
+    }
+}

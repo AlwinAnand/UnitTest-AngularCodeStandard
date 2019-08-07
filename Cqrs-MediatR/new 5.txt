@@ -1,0 +1,34 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace Boss.Domain.Models.Core
+{
+    public class RabbitStagingMessage
+    {
+        [Key]
+        public int RabbitStagingMessageId { get; set; }
+
+        /// <summary>
+        /// Foreign key to the tblWorkOrder record created for this message.
+        /// </summary>
+        
+        public int? OrderId { get; set; }
+
+        public string OriginatingSystem { get; set; }
+
+        public string CorrelationId { get; set; }
+
+        public string SendTo { get; set; }
+
+        public string ReplyTo { get; set; }
+
+        public System.DateTime CreatedDate { get; set; }
+
+        public string ContentType { get; set; }
+
+        public string OrderNumber { get; set; }
+
+        public string RelatedVendorServiceRequest { get; set; }
+
+        public string XmlOrder { get; set; }
+    }
+}

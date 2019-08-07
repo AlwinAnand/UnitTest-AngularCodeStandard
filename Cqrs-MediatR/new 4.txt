@@ -1,0 +1,21 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+
+namespace Boss.Domain.Common
+{
+    public interface IRepository<TEntity> where TEntity : class
+    {
+        IQueryable<TEntity> ReadOnlyQuery();
+        IQueryable<TOut> ReadOnlyQuery<TOut>();
+        IQueryable<TEntity> ReadOnlyQuery(params Expression<Func<TEntity, object>>[] includeSelectors);
+        IQueryable<TEntity> QueryWithTrackingForUpdates();
+        IQueryable<TEntity> QueryWithTrackingForUpdates(params Expression<Func<TEntity, object>>[] includeSelectors);
+        void Attach(TEntity entity);
+        void Remove(TEntity entity);
+        void Remove(Expression<Func<TEntity, bool>> expression);
+        void Add(TEntity entity);
+        void AddRange(IEnumerable<TEntity> entities);
+    }
+}

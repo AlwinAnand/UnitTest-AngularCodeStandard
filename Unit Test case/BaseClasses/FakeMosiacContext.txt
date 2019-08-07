@@ -1,0 +1,107 @@
+﻿using System.Data.Entity.Infrastructure;
+using MosaicBOH.Data;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using MosaicBOH.Business.Entities;
+using MosaicBOH.Common;
+using MosaicBOH.Business.Entities.DTO;
+using System.Data.Entity;
+
+namespace MosaicBOH.UnitTests.BaseClasses
+{
+    public partial class FakeMosaicContext : IMosaicContext
+    {
+        private bool _isDirtyRead;
+
+        public int SaveChanges()
+        {
+            return 0;
+        }
+
+        public void RejectChanges()
+        {
+            return;
+        }
+
+        public void SetModified<T>(T entity) where T : class
+        {
+        }
+
+        public void SetAdded<T>(T entity) where T : class
+        {
+        }
+
+        public void SetDeleted<T>(T entity) where T : class
+        {
+        }
+
+        public void SetUnchanged<T>(T entity) where T : class
+        {
+        }
+
+        public DbEntityEntry<T> Entry<T>(T entity) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        protected void SetupDBSets()
+        {
+            //init all of our db set objects
+            Type tFakeDbSet = typeof(FakeDBSet<>);
+            this.GetType().GetProperties().Where(p => p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == tFakeDbSet).ForEach(pi =>
+            {
+                object FakeDbSet = Activator.CreateInstance(tFakeDbSet.MakeGenericType(pi.PropertyType.GetGenericArguments().First()));
+                pi.SetValue(this, FakeDbSet);
+            });
+        }
+
+
+        public bool DoNotSetAddModifyDates { get; set; }
+        public Guid? CurrentUserID { get; set; }
+        public bool ValidateOnSaveEnabled { get; set; }
+        public void DetachEntities()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ApplyDistrictFilter(Guid districtID)
+        {
+        }
+
+        public bool ObliterateDistrict(Guid dItcirtsiD)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsDirtyRead
+        {
+            get { return _isDirtyRead; }
+        }
+        private IDbSet<CommunityNetwork> _communityNetwork = new FakeDBSet<CommunityNetwork>();
+        public IDbSet<CommunityNetwork> CommunityNetwork { get { return _communityNetwork; } set { _communityNetwork = value; } }
+
+        private IDbSet<CommunityNetworkDistrict> _communityNetworkDistrict = new FakeDBSet<CommunityNetworkDistrict>();
+        public IDbSet<CommunityNetworkDistrict> CommunityNetworkDistrict { get { return _communityNetworkDistrict; } set { _communityNetworkDistrict = value; } }
+
+        private IDbSet<SmartSense> _smartSense = new FakeDBSet<SmartSense>();
+        public IDbSet<SmartSense> SmartSense { get { return _smartSense; } set { _smartSense = value; } }
+
+
+        public void SetDirtyRead(bool isDirtyRead)
+        {
+            _isDirtyRead = isDirtyRead;
+            //throw new NotImplementedException();
+        }
+
+        public void CopyDistrict(District district)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetReadOnly(bool enableReadOnly)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

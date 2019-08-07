@@ -1,0 +1,171 @@
+﻿using System;
+using System.Security.Principal;
+using System.Web;
+using System.Web.Mvc;
+using Microsoft.Practices.ServiceLocation;
+using Microsoft.Practices.Unity;
+using Moq;
+using MosaicBOH.Business.Entities;
+using MosaicBOH.Business.Interfaces;
+using MosaicBOH.Web.Custom;
+
+namespace MosaicBOH.UnitTests.BaseClasses
+{
+    /// <summary>
+    /// Base class for unit testing
+    /// Provides initialization of Unity and Moq
+    /// Provides helper methods for creating/registering mock objects, resolving objects, and verifying expectations
+    /// </summary>
+    public class BaseUnitTest
+    {
+        #region Initialization
+
+        public BaseUnitTest()
+        {
+            // Refresh these classes for each test
+            _factory = new MockRepository(MockBehavior.Default);
+            Container = new UnityContainer();
+            var locator = new UnityServiceLocator(Container);
+            ServiceLocator.SetLocatorProvider(() => locator);
+            //DependencyResolver.SetResolver(locator);
+
+            Container.RegisterInstance(typeof(MosaicBOH.Common.LogService.ILogger),
+                new MosaicBOH.Common.LogService.Logger<string>());
+        }
+
+        #endregion
+
+        #region Private Fields
+
+        private readonly MockRepository _factory;
+
+        #endregion
+
+        #region Properties
+
+        protected IUnityContainer Container { get; private set; }
+
+        #endregion
+
+        #region Moq Wrappers
+
+        /// <summary>
+        /// Create Mock Object using MockFactory without registering it with unity
+        /// </summary>
+        /// <typeparam name="T">Type to create</typeparam>
+        protected Mock<T> CreateMock<T>() where T : class
+		{
+			return CreateMock<T>(false);
+		}
+
+		/// <summary>
+		/// Creates a mock object and optionally registers it with unity
+		/// </summary>
+		/// <typeparam name="T">Type to create</typeparam>
+		/// <param name="register">true to register</param>
+		protected Mock<T> CreateMock<T>(bool register) where T : class
+		{
+			Mock<T> mock = _factory.Create<T>();
+			if (register)
+			{
+                Container.RegisterInstance(mock.Object);
+			}
+			return mock;
+		}
+
+		/// <summary>
+		/// Create a Strict Mock Object using MockFactory
+		/// without registering it with unity
+		/// </summary>
+		/// <typeparam name="T">Type to create</typeparam>
+		/// <returns></returns>
+		protected Mock<T> StrictMock<T>() where T : class
+		{
+			return StrictMock<T>(false);
+		}
+
+		/// <summary>
+		/// Creates a strict mock object and optionally registers it with unity
+		/// </summary>
+		/// <typeparam name="T">Type to create</typeparam>
+		/// <param name="register">true to register</param>
+		/// <returns></returns>
+		protected Mock<T> StrictMock<T>(bool register) where T : class
+		{
+			Mock<T> mock = _factory.Create<T>(MockBehavior.Strict);
+			if (register)
+			{
+                Container.RegisterInstance(mock.Object);
+			}
+
+			return mock;
+		}
+
+		/// <summary>
+		/// Verify verifiable expectations that were setup in the test
+		/// </summary>
+		protected void VerifyExpectations()
+		{
+			_factory.Verify();
+		}
+
+		#endregion
+
+		#region Unity Wrappers
+
+		protected T Resolve<T>()
+		{
+            return Container.Resolve<T>();
+		}
+
+        protected T ResolveController<T>(IMenuPlanning menuPlanning = null, ControllerContext controllerContext = null) where T : BaseController
+        {
+            var ctrl = Container.Resolve<T>();
+
+            if (menuPlanning != null)
+                ctrl.MenuPlanning = menuPlanning;
+
+            if (controllerContext != null)
+                ctrl.ControllerContext = controllerContext;
+
+            return ctrl;
+        }
+        
+        #endregion
+
+        #region MVC Helpers
+
+        public Mock<ControllerContext> MockContext()
+        {
+            return MockContext(null);
+        }
+
+        public Mock<ControllerContext> MockContext(ControllerBase controller, Mock<IPrincipal> principal = null)
+        {
+            //make controller import the context
+            Mock<ControllerContext> context = CreateMock<ControllerContext>();
+            Mock<HttpContextBase> httpContext = CreateMock<HttpContextBase>();
+            var user = new User {UserID = Guid.NewGuid(), Name = "test", DistrictID = Guid.Empty};
+            var httpSession = new FakeHttpSessionStateBase
+            {
+                {"CurrentUser", user},
+                {"CurrentUserId", user.UserID},
+                {"OlsonTimeZoneID", "US/Pacific"}
+            };
+
+            context.SetupGet(x => x.HttpContext).Returns(httpContext.Object);
+            httpContext.SetupGet(x => x.Session).Returns(httpSession);
+            if (principal != null)
+            {
+                httpContext.SetupGet(x => x.User).Returns(principal.Object);
+            }
+            if (controller != null)
+            {
+                controller.ControllerContext = context.Object;
+            }
+            return context;
+        }
+
+        #endregion
+    }
+}

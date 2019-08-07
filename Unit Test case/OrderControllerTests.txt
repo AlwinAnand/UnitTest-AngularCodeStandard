@@ -1,0 +1,987 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.ServiceModel;
+using System.Web.Mvc;
+using Kendo.Mvc.UI;
+using Moq;
+using MosaicBOH.Business.Entities;
+using MosaicBOH.Business.Entities.DTO;
+using MosaicBOH.Business.Interfaces.FaultContracts;
+using MosaicBOH.Common;
+using MosaicBOH.UnitTests.BaseClasses;
+using MosaicBOH.UnitTests.Helpers;
+using MosaicBOH.Web.Areas.Ordering.Controllers;
+using MosaicBOH.Web.Areas.Ordering.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Xunit;
+using System.Web;
+using System.IO;
+
+namespace MosaicBOH.UnitTests.Web.Controllers
+{
+    [Trait("TestCategory", "Unit")]
+    public class OrderControllerTests : ControllerTestBase<OrdersController>
+    {
+        private Vendor _expectedVendor;
+
+        public OrderControllerTests()
+        {
+            _expectedVendor = new Vendor
+            {
+                VendorID = Guid.NewGuid(),
+                VendorName = "test",
+                Abbreviation = "vendorAbb",
+                Active = true,
+                Country = Constants.Countries.Codes.UnitedStates,
+                Contacts = new List<VendorContact>(),
+                Instructions = "This is an instruction.",
+                DeliveryLeadTime = 4,
+                MinimumOrderAmount = 50
+            };
+        }
+
+        public override void Dispose()
+        {
+            // Clear test resources.
+            _expectedVendor = null;
+            base.Dispose();
+        }
+
+        [Fact]
+        public void Orders_NoCachedModel_ModelCreated()
+        {
+            // Act
+            var res = Controller.VendorOrderSearch(null) as ViewResult;
+
+            // Assert
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.NotNull(res.Model);
+        }
+
+        [Fact]
+        public void Orders_CacheNotRequested_ModelRefreshed()
+        {
+            // Arrange
+            var model = new VendorOrderSearchViewModel();
+
+            // Act
+            var res = Controller.VendorOrderSearch(null) as ViewResult;
+
+            // Assert
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.NotNull(res.Model);
+            Assert.NotEqual(model, res.Model);
+        }
+
+        [Fact]
+        public void VendorOrders_Search_ReturnsValidResult()
+        {
+            // Arrange
+            var siteID = RandomDataGenerator.CreateGuid(1);
+            MockMenuPlanning.Setup(x => x.SearchVendorOrders(It.Is<VendorOrderQuery>(q => q.SiteID == siteID)))
+                .Returns(new PagedResult<VendorOrder>
+                {
+                    ResultCount = 1,
+                    Results = new List<VendorOrder>
+                    {
+                        new VendorOrder
+                        {
+                            Receiving = null,
+                            ApprovedByUser = null
+                        }
+                    }
+                }
+                ).Verifiable();
+
+            var model = new VendorOrderSearchViewModel {SiteID = siteID};
+            var request = new DataSourceRequest();
+
+            // Act
+            // ReSharper disable once PossibleNullReferenceException
+            var res = Controller.VendorOrdersQuery(request, model) as JsonResult;
+            // ReSharper disable once PossibleNullReferenceException
+            var kendoResultData = res.Data;
+            var result = JsonConvert.DeserializeObject<JObject>(JsonConvert.SerializeObject(kendoResultData));
+            var list =
+                JsonConvert.DeserializeObject<List<VendorOrderSearchViewModel>>(result.SelectToken("Data").ToString());
+
+            //Assert
+            VerifyExpectations();
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.True(list.Count == 1);
+        }
+
+        [Fact]
+        public void VendorOrders_Search_ThrowException()
+        {
+            // Arrange
+            var siteID = RandomDataGenerator.CreateGuid(1);
+            MockMenuPlanning.Setup(x => x.SearchVendorOrders(It.Is<VendorOrderQuery>(q => q.SiteID == siteID)))
+                .Throws(new FaultException<ServerErrorFault>(new ServerErrorFault("Server Error"))).Verifiable();
+
+            var model = new VendorOrderSearchViewModel {SiteID = siteID};
+            var request = new DataSourceRequest();
+
+            // Act
+            // ReSharper disable once PossibleNullReferenceException
+            var res = Controller.VendorOrdersQuery(request, model) as JsonResult;
+            // ReSharper disable once PossibleNullReferenceException
+            var kendoResultData = res.Data;
+            var result = JsonConvert.DeserializeObject<JObject>(JsonConvert.SerializeObject(kendoResultData));
+            var list =
+                JsonConvert.DeserializeObject<List<VendorOrderSearchViewModel>>(result.SelectToken("Data").ToString());
+
+            //Assert
+            VerifyExpectations();
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.True(list.Count == 0);
+        }
+
+        [Fact]
+        public void Orders_GetVendorsWhoHaveVendorOrders_ReturnsJsonResult()
+        {
+            //Arrange
+            MockMenuPlanning.Setup(x => x.GetVendorsWhoHaveVendorOrders(null, true, false))
+                .Returns(new List<Vendor>
+                {
+                    new Vendor {VendorID = Guid.NewGuid(), VendorName = RandomDataGenerator.RandomString(10)}
+                })
+                .Verifiable();
+
+            //Act
+            var res = Controller.GetVendorsWhoHaveVendorOrders();
+
+            //Assert
+            VerifyExpectations();
+            Assert.NotNull(res);
+        }
+
+        [Fact]
+        public void Orders_GetUsersWhoHaveEnteredVendorOrders_ReturnsJsonResult()
+        {
+            //Arrange
+            MockMenuPlanning.Setup(x => x.GetUsersWhoHaveEnteredVendorOrders(null, true))
+                .Returns(new List<User> {new User {UserID = Guid.NewGuid(), Name = RandomDataGenerator.RandomString(8)}})
+                .Verifiable();
+
+            //Act
+            var res = Controller.GetUsersWhoHaveEnteredVendorOrders();
+
+            //Assert
+            VerifyExpectations();
+            Assert.NotNull(res);
+        }
+
+        [Fact]
+        public void Orders_GetUsersWhoHaveApprovedVendorOrders_ReturnsJsonResult()
+        {
+            //Arrange
+            MockMenuPlanning.Setup(x => x.GetUsersWhoHaveApprovedVendorOrders(null, true))
+                .Returns(new List<User> {new User {UserID = Guid.NewGuid(), Name = RandomDataGenerator.RandomString(8)}})
+                .Verifiable();
+
+            //Act
+            var res = Controller.GetUsersWhoHaveApprovedVendorOrders();
+
+            //Assert
+            VerifyExpectations();
+            Assert.NotNull(res);
+        }
+
+        [Fact]
+        public void VendorOrderEdit_NoAuthorization_ReturnsUnauthorized()
+        {
+            // Arrange
+            MockPrincipal.Setup(p => p.IsInRole(Constants.Roles.Ordering.VendorOrderAdd))
+                .Returns(false).Verifiable();
+            // Act
+            var res = Controller.VendorOrderEdit(Guid.Empty) as HttpUnauthorizedResult;
+
+            // Assert
+            Assert.NotNull(res);
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_NoAddAuthorization_ReturnsUnauthorized()
+        {
+            // Arrange
+            MockPrincipal.Setup(p => p.IsInRole(Constants.Roles.Ordering.VendorOrderAdd))
+                .Returns(false).Verifiable();
+            var model = new VendorOrder {VendorOrderID = Guid.Empty};
+            var formCollection = new FormCollection();
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as HttpUnauthorizedResult;
+
+            // Assert
+            Assert.NotNull(res);
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_AddSave_ReturnsValidResult()
+        {
+            // Arrange
+            MockPrincipal.Setup(p => p.IsInRole(Constants.Roles.Ordering.VendorOrderAdd))
+                .Returns(true).Verifiable();
+            var model = new VendorOrder {VendorOrderID = Guid.Empty}; //Add
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection {["SubmitAction"] = "Save", ["vendorOrderItems"] = vendorOrderItems};
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_AddSubmit_ReturnsValidResult()
+        {
+            // Arrange
+            MockPrincipal.Setup(p => p.IsInRole(Constants.Roles.Ordering.VendorOrderAdd))
+                .Returns(true).Verifiable();
+            var model = new VendorOrder {VendorOrderID = Guid.Empty};
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Submit",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_AddApprove_ReturnsValidResult()
+        {
+            // Arrange
+            MockPrincipal.Setup(p => p.IsInRole(Constants.Roles.Ordering.VendorOrderAdd))
+                .Returns(true).Verifiable();
+            var model = new VendorOrder {VendorOrderID = Guid.Empty};
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Approve",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_AddReject_ReturnsValidResult()
+        {
+            // Arrange
+            MockPrincipal.Setup(p => p.IsInRole(Constants.Roles.Ordering.VendorOrderAdd))
+                .Returns(true).Verifiable();
+            var model = new VendorOrder {VendorOrderID = Guid.Empty};
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Reject",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_EditSave_ReturnsValidResult()
+        {
+            // Arrang
+            var model = new VendorOrder {VendorOrderID = RandomDataGenerator.CreateGuid(1)}; //Edit
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection {["SubmitAction"] = "Save", ["vendorOrderItems"] = vendorOrderItems};
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_EditSubmit_ReturnsValidResult()
+        {
+            // Arrange
+            var model = new VendorOrder {VendorOrderID = RandomDataGenerator.CreateGuid(1)}; //Edit
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Submit",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_EditApprove_ReturnsValidResult()
+        {
+            // Arrange
+            var model = new VendorOrder
+            {
+                VendorOrderID = RandomDataGenerator.CreateGuid(1),
+                SiteID = Guid.Empty,
+                VendorID = Guid.Empty
+            }; //Edit
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Approve",
+                ["vendorOrderItems"] = vendorOrderItems,
+                ["HiddenSiteID"] = Guid.NewGuid().ToString(),
+                ["HiddenVendorID"] = Guid.NewGuid().ToString()
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_EditReject_ReturnsValidResult()
+        {
+            // Arrange
+            var model = new VendorOrder
+            {
+                VendorOrderID = RandomDataGenerator.CreateGuid(1),
+                Site = null,
+                Vendor = null,
+                SiteID = Guid.NewGuid(),
+                VendorID = Guid.NewGuid()
+            }; //Edit
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Reject",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_SubmitActionReject_ExceptionPath()
+        {
+            // Arrange
+            var model = new VendorOrder {VendorOrderID = RandomDataGenerator.CreateGuid(1)}; //Edit
+            MockMenuPlanning.Setup(x => x.SaveOrUpdateVendorOrder(model, "Reject", It.IsAny<DateTime>()))
+                .Throws(new Exception())
+                .Verifiable();
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Reject",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderEdit", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_SubmitActionSave_ExceptionPath()
+        {
+            // Arrange
+            var model = new VendorOrder {VendorOrderID = Guid.Empty}; //Edit
+            MockMenuPlanning.Setup(x => x.SaveOrUpdateVendorOrder(model, "Save", It.IsAny<DateTime>()))
+                .Throws(new Exception())
+                .Verifiable();
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Save",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderEdit", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_SubmitActionSubmit_ExceptionPath()
+        {
+            // Arrange
+            var model = new VendorOrder {VendorOrderID = RandomDataGenerator.CreateGuid(1)}; //Edit
+            MockMenuPlanning.Setup(x => x.SaveOrUpdateVendorOrder(model, "Submit", It.IsAny<DateTime>()))
+                .Throws(new Exception())
+                .Verifiable();
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Submit",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderEdit", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_SubmitActionApprove_ExceptionPath()
+        {
+            // Arrange
+            var model = new VendorOrder {VendorOrderID = Guid.Empty}; //Edit
+            MockMenuPlanning.Setup(x => x.SaveOrUpdateVendorOrder(model, "Approve", It.IsAny<DateTime>()))
+                .Throws(new Exception())
+                .Verifiable();
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> {new VendorOrderEntry()});
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Approve",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderEdit", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEditSaveSubmitApproveReject_SubmitActionRevert_ExceptionPath()
+        {
+            // Arrange
+            var model = new VendorOrder { VendorOrderID = Guid.Empty, Comment = "test" }; //Edit
+            MockMenuPlanning.Setup(x => x.SaveOrUpdateVendorOrder(model, "Revert", It.IsAny<DateTime>()))
+                .Throws(new Exception())
+                .Verifiable();
+            var vendorOrderItems = JsonConvert.SerializeObject(new List<VendorOrderEntry> { new VendorOrderEntry() });
+            var formCollection = new FormCollection
+            {
+                ["SubmitAction"] = "Revert",
+                ["vendorOrderItems"] = vendorOrderItems
+            };
+
+            // Act
+            var res = Controller.VendorOrderEditSaveSubmitApproveReject(model, formCollection) as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            Assert.Equal("VendorOrderEdit", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrderEdit_CommitFailed_ReturnsCorrectModel()
+        {
+            // Arrange
+            MockMenuPlanning.Setup(
+                x => x.SearchVendorOrderProductItems(It.IsAny<ProductItemQuery>(), It.IsAny<DateTime>()))
+                .Returns(new List<VendorOrderEntry>
+                {
+                    new VendorOrderEntry
+                    {
+                        ItemID = RandomDataGenerator.CreateGuid(2),
+                        ItemNumber = RandomDataGenerator.RandomIntegerFromRange(1),
+                        ProductID = Guid.NewGuid(),
+                        ProductNumber = RandomDataGenerator.RandomString(6)
+                    }
+                }).Verifiable();
+            var vendorOrderID = RandomDataGenerator.CreateGuid(1);
+            var vendorOrder = new VendorOrder
+            {
+                VendorOrderID = vendorOrderID,
+                VendorOrderEntries = new List<VendorOrderEntry>
+                {
+                    new VendorOrderEntry
+                    {
+                        ItemID = RandomDataGenerator.CreateGuid(2),
+                        ItemNumber = RandomDataGenerator.RandomIntegerFromRange(1),
+                        ProductID = Guid.NewGuid(),
+                        ProductNumber = RandomDataGenerator.RandomString(6)
+                    }
+                }
+            };
+            Controller.TempData = new TempDataDictionary {["passedModel"] = vendorOrder, ["modelError"] = string.Empty};
+            MockMenuPlanning.Setup(x => x.GetSystemSettingValue(Constants.SystemSettings.Software.OrderingAndInventory,
+                Constants.SystemSettings.Key.ExportVendorOrderPriorApproval))
+               .Returns(new SystemSettingValue() { SystemSettingValue1 = Constants.StringResult.Yes }).Verifiable();
+           
+            // Act
+            var res = Controller.VendorOrderEdit(null) as ViewResult;
+
+            // Assert
+            Assert.NotNull(res);
+            var model = (VendorOrder) res.Model;
+            Assert.Equal(model.VendorOrderID, vendorOrderID);
+        }
+
+        [Fact]
+        public void VendorOrderEdit_ExistingVendorCommitSuccess_ReturnsCorrectModel()
+        {
+            // Arrange
+            MockMenuPlanning.Setup(
+                x => x.SearchVendorOrderProductItems(It.IsAny<ProductItemQuery>(), It.IsAny<DateTime>()))
+                .Returns(new List<VendorOrderEntry>()).Verifiable();
+            var vendorOrderID = RandomDataGenerator.CreateGuid(1);
+            var requisitionNumber = RandomDataGenerator.RandomIntegerFromRange(1);
+            var vendorOrder = new VendorOrder
+            {
+                VendorOrderID = vendorOrderID,
+                VendorOrderEntries = new List<VendorOrderEntry>(),
+                Requisition = new Requisition { RequisitionNumber = requisitionNumber }
+            };
+            MockMenuPlanning.Setup(x => x.GetVendorOrderByID(vendorOrderID)).Returns(vendorOrder).Verifiable();
+            MockMenuPlanning.Setup(x => x.GetSystemSettingValue(Constants.SystemSettings.Software.OrderingAndInventory,
+                Constants.SystemSettings.Key.ExportVendorOrderPriorApproval))
+               .Returns(new SystemSettingValue() { SystemSettingValue1 = Constants.StringResult.No }).Verifiable();
+
+            // Act
+            var res = Controller.VendorOrderEdit(vendorOrderID) as ViewResult;
+
+            // Assert
+            Assert.NotNull(res);
+            var model = (VendorOrder)res.Model;
+            Assert.Equal(model.VendorOrderID, vendorOrderID);
+            Assert.Equal(model.Requisition.RequisitionNumber, requisitionNumber);
+        }
+
+        [Fact]
+        public void VendorOrderEdit_NewVendorCommitSuccess_ReturnsCorrectModel()
+        {
+            // Arrange
+            MockMenuPlanning.Setup(
+                x => x.SearchVendorOrderProductItems(It.IsAny<ProductItemQuery>(), It.IsAny<DateTime>()))
+                .Returns(new List<VendorOrderEntry>()).Verifiable();
+            MockMenuPlanning.Setup(x => x.GetSystemSettingValue(Constants.SystemSettings.Software.OrderingAndInventory,
+                Constants.SystemSettings.Key.ExportVendorOrderPriorApproval))
+               .Returns(new SystemSettingValue()).Verifiable();
+
+            // Act
+            var res = Controller.VendorOrderEdit(Guid.Empty) as ViewResult;
+
+            // Assert
+            Assert.NotNull(res);
+            var model = (VendorOrder)res.Model;
+            Assert.Equal(model.VendorOrderID, Guid.Empty);
+        }
+
+        [Fact]
+        public void VendorOrderEdit_BackOrder_ReturnsCorrectModel()
+        {
+            var vendorOrderID = new Guid();
+            var vendorOrder = new VendorOrder
+            {
+                VendorOrderID = vendorOrderID,
+                VendorOrderEntries = new List<VendorOrderEntry>()
+            };
+            Controller.TempData = new TempDataDictionary {["passedModel"] = vendorOrder,["modelError"] = string.Empty };
+            MockMenuPlanning.Setup(x => x.GetSystemSettingValue(Constants.SystemSettings.Software.OrderingAndInventory,
+                Constants.SystemSettings.Key.ExportVendorOrderPriorApproval))
+               .Returns(new SystemSettingValue() { SystemSettingValue1 = Constants.StringResult.Yes }).Verifiable();
+
+            // Act
+            var res = Controller.VendorOrderEdit(vendorOrderID) as ViewResult;
+
+            // Assert
+            Assert.NotNull(res);
+            var model = (VendorOrder)res.Model;
+            Assert.Equal(model.VendorOrderID, vendorOrderID);
+        }
+
+        [Fact]
+        public void RefreshItemList_ReturnsJsonResult()
+        {
+            // Arrange
+            MockMenuPlanning.Setup(
+                x => x.SearchVendorOrderProductItems(It.IsAny<ProductItemQuery>(), It.IsAny<DateTime>()))
+                .Returns(new List<VendorOrderEntry>())
+                .Verifiable();
+
+            // Act
+            var res = Controller.RefreshItemList(It.IsAny<DataSourceRequest>(),
+                new VendorOrder {SiteID = Guid.NewGuid(), VendorID = Guid.NewGuid()});
+            var data = res.Data;
+            var type = data.GetType();
+            var itemsProperty = type.GetProperty("items");
+            var items = itemsProperty.GetValue(data, null);
+
+            // Assert
+            Assert.NotNull(data);
+            Assert.Equal(new List<VendorOrderEntry>(), items);
+        }
+
+        [Fact]
+        public void VendorOrder_ActionMethods_HaveExpectedAuthorizationRoles()
+        {
+            // Arrange
+            const string vendorOrderRole = Constants.Roles.Ordering.VendorOrder;
+            const string vendorOrderEditRole = Constants.Roles.Ordering.VendorOrderEdit;
+            const string vendorOrderDeleteRole = Constants.Roles.Ordering.VendorOrderDelete;
+
+            //Map controller action methods to expected roles.
+            var methodMap = new Dictionary<Expression<Action<OrdersController>>, string[]>
+            {
+                {c => c.VendorOrderSearch(null), new[] {vendorOrderRole}},
+                {c => c.VendorOrdersQuery(null, null), new[] {vendorOrderRole}},
+                {c => c.GetUsersWhoHaveEnteredVendorOrders(null), new[] {vendorOrderRole}},
+                {c => c.GetUsersWhoHaveApprovedVendorOrders(null), new[] {vendorOrderRole}},
+                {c => c.VendorOrderEdit(null), new[] {vendorOrderRole}},
+                {c => c.RefreshItemList(null, null), new[] {vendorOrderEditRole}},
+                {c => c.VendorOrderEditSaveSubmitApproveReject(null, null), new[] {vendorOrderEditRole}},
+                {c => c.Delete(Guid.Empty), new[] {vendorOrderDeleteRole}},
+                {c => c.VendorOrderEditCancel(), new[] {vendorOrderRole}}
+            };
+
+            // Act & Assert
+            // Note: Each key value pair in the map has an Assert.IsTrue applied to it
+            var methodsResults = ControllerHelper.MethodsHaveAuthorizationRoles(methodMap);
+            Assert.True(methodsResults.Values.All(x => x), "One of the expected authorization tests failed.");
+        }
+
+        [Fact]
+        public void VendorOrder_Delete_HasDataSourceAuthorization()
+        {
+            // Arrange
+            Expression<Action<OrdersController>> methodUnderTest = c => c.Delete(Guid.Empty);
+
+            // Act
+            var methodHasDataSourceAuthorization = ControllerHelper.MethodHasDataSourceAuthorization(methodUnderTest);
+
+            // Assert
+            Assert.True(methodHasDataSourceAuthorization);
+        }
+
+        [Fact]
+        public void VendorOrder_RefreshItemList_HasDataSourceAuthorization()
+        {
+            // Arrange
+            Expression<Action<OrdersController>> methodUnderTest = c => c.RefreshItemList(null, null);
+
+            // Act
+            var methodHasDataSourceAuthorization = ControllerHelper.MethodHasDataSourceAuthorization(methodUnderTest);
+
+            // Assert
+            Assert.True(methodHasDataSourceAuthorization);
+        }
+
+        [Fact]
+        public void VendorOrder_VendorOrdersQuery_HasDataSourceAuthorization()
+        {
+            // Arrange
+            Expression<Action<OrdersController>> methodUnderTest = c => c.VendorOrdersQuery(null, null);
+
+            // Act
+            var methodHasDataSourceAuthorization = ControllerHelper.MethodHasDataSourceAuthorization(methodUnderTest);
+
+            // Assert
+            Assert.True(methodHasDataSourceAuthorization);
+        }
+
+        [Fact]
+        public void VendorOrder_Delete_Success()
+        {
+            // Arrange
+            MockMenuPlanning.Setup(x => x.DeleteVendorOrder(It.IsAny<Guid>())).Verifiable();
+            //Act
+            var actionResult = Controller.Delete(It.IsAny<Guid>()) as JsonResult;
+            // ReSharper disable once PossibleNullReferenceException
+            dynamic jsonResult = actionResult.Data;
+
+            //Asset
+            VerifyExpectations();
+            Assert.True(jsonResult.Success);
+        }
+
+        [Fact]
+        public void VendorOrder_Delete_Failed()
+        {
+            // Arrange
+            MockMenuPlanning.Setup(x => x.DeleteVendorOrder(It.IsAny<Guid>())).Throws(new Exception()).Verifiable();
+            //Act
+            var actionResult = Controller.Delete(It.IsAny<Guid>()) as JsonResult;
+            // ReSharper disable once PossibleNullReferenceException
+            dynamic jsonResult = actionResult.Data;
+
+            //Asset
+            VerifyExpectations();
+            Assert.False(jsonResult.Success);
+        }
+
+        [Fact]
+        public void VendorOrder_VendorOrderEditCancel_RedirectSuccess()
+        {
+            // Arrange
+
+            // Act
+            var res = Controller.VendorOrderEditCancel() as RedirectToRouteResult;
+
+            // Assert
+            Assert.NotNull(res);
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.Equal("VendorOrderSearch", res.RouteValues["action"].ToString());
+        }
+
+        [Fact]
+        public void VendorOrder_CheckDeliveryScheduleLeadTimeMinmumOrderAmount_ReturnSuccessJsonResult()
+        {
+            // Arrange
+            MockMenuPlanning.Setup(x => x.IsDeliveryDateinSchedule(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<int>()))
+                .Returns(false)
+                .Verifiable();
+            MockMenuPlanning.Setup(x => x.GetVendorByID(It.IsAny<Guid>())).Returns(_expectedVendor).Verifiable();
+
+            // Act
+            var result =
+                Controller.CheckDeliveryScheduleLeadTimeMinmumOrderAmount(new DataSourceRequest(), It.IsAny<Guid>(),
+                    It.IsAny<Guid>(), DateTime.Now.ToShortDateString(), decimal.Parse("25.00")) as JsonResult;
+            // ReSharper disable once PossibleNullReferenceException
+            var data = result.Data;
+            var type = data.GetType();
+            var errorCountProperty = type.GetProperty("ErrorCount");
+            var errorCount = errorCountProperty.GetValue(data, null);
+
+            var errorTypeProperty = type.GetProperty("ErrorType");
+            var errorType = errorTypeProperty.GetValue(data, null);
+
+            var minOrderAmountProperty = type.GetProperty("MinOrderAmount");
+            var minOrderAmount = minOrderAmountProperty.GetValue(data, null);
+
+            //// Assert
+            VerifyExpectations();
+            Assert.Equal(3, errorCount);
+            Assert.Equal("Schedule", errorType);
+            Assert.Equal("50", minOrderAmount);
+        }
+
+        [Fact]
+        public void VendorOrder_CheckDeliveryScheduleLeadTimeMinmumOrderAmount_ReturnFailedJsonResult()
+        {
+            // Arrange
+            MockMenuPlanning.Setup(x => x.IsDeliveryDateinSchedule(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<int>()))
+                .Throws(new Exception()).Verifiable();
+            
+            // Act
+            var result =
+                Controller.CheckDeliveryScheduleLeadTimeMinmumOrderAmount(new DataSourceRequest(), It.IsAny<Guid>(),
+                    It.IsAny<Guid>(), DateTime.Now.ToShortDateString(), decimal.Parse("25.00")) as JsonResult;
+            //// ReSharper disable PossibleNullReferenceException
+            dynamic jsonResult = result.Data;
+
+            //Asset
+            VerifyExpectations();
+            Assert.False(jsonResult.Success);
+        }
+
+        [Fact]
+        public void GetVendorOrderExportTemplate_ReturnsFileResult()
+        {
+            //Arrange
+            var controller = new OrdersController();
+            var httpResponseBaseMock = new Mock<HttpResponseBase>();
+
+            //This would return a fake Output stream to you SUT 
+            httpResponseBaseMock.Setup(x => x.OutputStream).Returns(new Mock<Stream>().Object);
+            var httpContextBaseStub = new Mock<HttpContextBase>();
+            httpContextBaseStub.SetupGet(x => x.Response).Returns(httpResponseBaseMock.Object);
+            var controllerContextStub = new Mock<ControllerContext>();
+            controllerContextStub.SetupGet(x => x.HttpContext).Returns(httpContextBaseStub.Object);
+            controller.ControllerContext = controllerContextStub.Object;
+            httpResponseBaseMock.Setup(x => x.AddHeader("Content-Disposition", "attachment; filename=default.csv"));
+            var vendorOrderExportTemplate = new VendorOrderExportTemplate()
+            {
+               FileFormat = ""
+            };
+
+            MockMenuPlanning.Setup(x => x.GetExportTemplateByVendorID(It.IsAny<Guid>()))
+                .Returns(vendorOrderExportTemplate)
+                .Verifiable();
+
+
+            var result = controller.Download(new Guid(),new Guid().ToString(), new Guid()) as FileContentResult;
+
+            Assert.NotNull(result.FileDownloadName);
+
+        }
+
+        [Fact]
+        public void WarehouseOrders_NoCachedModel_ModelCreated()
+        {
+            // Act
+            var res = Controller.WarehouseOrderSearch(null) as ViewResult;
+
+            // Assert
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.NotNull(res.Model);
+        }
+
+        [Fact]
+        public void WarehouseOrders_CacheNotRequested_ModelRefreshed()
+        {
+            // Arrange
+            var model = new WarehouseOrderSearchViewModel();
+
+            // Act
+            var res = Controller.WarehouseOrderSearch(null) as ViewResult;
+
+            // Assert
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.NotNull(res.Model);
+            Assert.NotEqual(model, res.Model);
+        }
+
+        [Fact]
+        public void WarehouseOrders_Search_ReturnsValidResult()
+        {
+            // Arrange
+            var siteID = RandomDataGenerator.CreateGuid(1);
+            MockMenuPlanning.Setup(x => x.SearchWarehouseOrders(It.Is<WarehouseOrderQuery>(q => q.SiteID == siteID)))
+                .Returns(new PagedResult<WarehouseOrder>
+                {
+                    ResultCount = 1,
+                    Results = new List<WarehouseOrder>
+                    {
+                        new WarehouseOrder
+                        {
+                            Transfer = null,
+                            ApprovedByUser = null
+                        }
+                    }
+                }
+                ).Verifiable();
+
+            var model = new WarehouseOrderSearchViewModel { SiteID = siteID };
+            var request = new DataSourceRequest();
+
+            // Act
+            // ReSharper disable once PossibleNullReferenceException
+            var res = Controller.WarehouseOrdersQuery(request, model) as JsonResult;
+            // ReSharper disable once PossibleNullReferenceException
+            var kendoResultData = res.Data;
+            var result = JsonConvert.DeserializeObject<JObject>(JsonConvert.SerializeObject(kendoResultData));
+            var list =
+                JsonConvert.DeserializeObject<List<VendorOrderSearchViewModel>>(result.SelectToken("Data").ToString());
+
+            //Assert
+            VerifyExpectations();
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.True(list.Count == 1);
+        }
+
+        [Fact]
+        public void WarehouseOrders_Search_ThrowException()
+        {
+            // Arrange
+            var siteID = RandomDataGenerator.CreateGuid(1);
+            MockMenuPlanning.Setup(x => x.SearchWarehouseOrders(It.Is<WarehouseOrderQuery>(q => q.SiteID == siteID)))
+                .Throws(new FaultException<ServerErrorFault>(new ServerErrorFault("Server Error"))).Verifiable();
+
+            var model = new WarehouseOrderSearchViewModel { SiteID = siteID };
+            var request = new DataSourceRequest();
+
+            // Act
+            // ReSharper disable once PossibleNullReferenceException
+            var res = Controller.WarehouseOrdersQuery(request, model) as JsonResult;
+            // ReSharper disable once PossibleNullReferenceException
+            var kendoResultData = res.Data;
+            var result = JsonConvert.DeserializeObject<JObject>(JsonConvert.SerializeObject(kendoResultData));
+            var list =
+                JsonConvert.DeserializeObject<List<WarehouseOrderSearchViewModel>>(result.SelectToken("Data").ToString());
+
+            //Assert
+            VerifyExpectations();
+            // ReSharper disable once PossibleNullReferenceException
+            Assert.True(list.Count == 0);
+        }
+
+        [Fact]
+        public void WarehouseOrders_GetWarehouseWhoHaveWarehouseOrders_ReturnsJsonResult()
+        {
+            //Arrange
+            MockMenuPlanning.Setup(x => x.GetWarehouseWhoHaveWarehouseOrders(null, true, false))
+                .Returns(new List<Site>
+                {
+                    new Site { SiteID= Guid.NewGuid(), SiteName = RandomDataGenerator.RandomString(10)}
+                })
+                .Verifiable();
+
+            //Act
+            var res = Controller.GetWarehouseWhoHaveWarehouseOrders();
+
+            //Assert
+            VerifyExpectations();
+            Assert.NotNull(res);
+        }
+
+        [Fact]
+        public void WarehouseOrders_GetUsersWhoHaveEnteredWarehouseOrders_ReturnsJsonResult()
+        {
+            //Arrange
+            MockMenuPlanning.Setup(x => x.GetUsersWhoHaveEnteredWarehouseOrders(null, true))
+                .Returns(new List<User> { new User { UserID = Guid.NewGuid(), Name = RandomDataGenerator.RandomString(8) } })
+                .Verifiable();
+
+            //Act
+            var res = Controller.GetUsersWhoHaveEnteredWarehouseOrders();
+
+            //Assert
+            VerifyExpectations();
+            Assert.NotNull(res);
+        }
+
+        [Fact]
+        public void WarehouseOrders_GetUsersWhoHaveApprovedWarehouseOrders_ReturnsJsonResult()
+        {
+            //Arrange
+            MockMenuPlanning.Setup(x => x.GetUsersWhoHaveApprovedWarehouseOrders(null, true))
+                .Returns(new List<User> { new User { UserID = Guid.NewGuid(), Name = RandomDataGenerator.RandomString(8) } })
+                .Verifiable();
+
+            //Act
+            var res = Controller.GetUsersWhoHaveApprovedWarehouseOrders();
+
+            //Assert
+            VerifyExpectations();
+            Assert.NotNull(res);
+        }
+
+    }
+}

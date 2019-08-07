@@ -1,0 +1,26 @@
+
+
+using MediatR;
+
+OutsideProvisioningController -> private readonly IMediator _mediator;
+ public OutsideProvisioningController(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+		
+		  [HttpPost]
+        [ResponseType(typeof(int))]
+        [Route("stage-message")]
+        public IHttpActionResult StageMessage([FromBody]MessageFromQueue message)
+        {
+            try
+            {
+                return Ok(_mediator.Send(new StageMessageCommand { Message = message }));
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateResponseFromError(HttpStatusCode.BadRequest, ex, ErrorCodes.UnknownError);
+            }
+        }
+
+

@@ -1,0 +1,16 @@
+using System.Collections.Generic;
+using Boss.Domain.Models.CustomerService;
+
+namespace Boss.Domain
+{
+    public interface IUnitOfWork<TC> where TC : BoundaryContextIdentifier
+    {
+        void SaveChanges();
+        void Delete<T>(T obj) where T : class;
+        void Edit<T>(T obj) where T : class;
+        void Add<T>(T obj) where T : class;
+        void Attach<T>(T obj) where T : class;
+        void DeleteAll<T>(IEnumerable<T> obj) where T : class;
+        void AddRange<T>(IEnumerable<T> objList) where T : class;
+    }
+}

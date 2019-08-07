@@ -1,0 +1,87 @@
+using Boss.Domain;
+using Boss.Domain.Common;
+using Boss.Domain.Core;
+using Boss.Domain.Models.Core;
+using Boss.Domain.Models.RabbitMq;
+using FluentValidation;
+using MediatR;
+using Serilog;
+using System;
+using System.Linq;
+
+namespace Boss.Web.Api.Core.v2.Provisioning.Command.OutsideProvisioning
+{
+    public class StageMessageCommand : IRequest<int>
+    {
+        public MessageFromQueue Message { get; set; }
+
+        public class StageMessageCommandValidator : AbstractValidator<StageMessageCommand>
+        {
+            public StageMessageCommandValidator()
+            {
+                RuleFor(x => x.Message).NotNull();
+                RuleFor(x => x.Message.Xml).NotEmpty();
+            }
+        }
+    }
+
+    public class StageMessageCommandHandler : IRequestHandler<StageMessageCommand, int>
+    {
+        private readonly IRepository<RabbitStagingMessage> _messageRepository;
+        private readonly IUnitOfWork<CoreBoundaryIdentifier> _coreUnitOfWork;
+
+
+        public StageMessageCommandHandler(
+            IRepository<RabbitStagingMessage> messageRepository,
+            IUnitOfWork<CoreBoundaryIdentifier> coreUnitOfWork)
+
+        {
+            _messageRepository = messageRepository;
+            _coreUnitOfWork = coreUnitOfWork;
+        }
+
+        public int Handle(StageMessageCommand request)
+        {
+            var record = _messageRepository
+                .QueryWithTrackingForUpdates()
+                .SingleOrDefault(x => x.CorrelationId == request.Message.CorrelationId);
+
+            try
+            {
+                if (record == null)
+                {
+                    record = new RabbitStagingMessage
+                    {
+                        ContentType = request.Message.ContentType,
+                        CorrelationId = request.Message.CorrelationId,
+                        CreatedDate = request.Message.CreatedDate,
+                        OrderNumber = request.Message.OrderNumber,
+                        OriginatingSystem = request.Message.OriginatingSystem,
+                        RelatedVendorServiceRequest = request.Message.RelatedVendorServiceRequest,
+                        ReplyTo = request.Message.ReplyTo,
+                        SendTo = request.Message.SendTo,
+                        XmlOrder = request.Message.Xml,
+                        OrderId = null
+                    };
+
+                    _messageRepository.Add(record);
+                    _coreUnitOfWork.SaveChanges();
+                }
+                else
+                {
+                    //Just in case the XML is different.
+                    record.XmlOrder = request.Message.Xml;
+                    _coreUnitOfWork.SaveChanges();
+                }
+            }
+            catch (Exception ex)
+            {
+                //should log the error in Serilog!
+                Log.Fatal(ex, "Failled to write or find a RabbitMQ message.", request.Message.ReplyTo, request.Message.CorrelationId, request.Message.OrderNumber);
+                throw;
+            }
+            return record.RabbitStagingMessageId;
+        }
+
+    }
+}

@@ -1,0 +1,306 @@
+using System.Data.Entity;
+using Boss.Domain.Core;
+using Boss.Domain.Models;
+using Boss.Domain.Models.Core;
+using Boss.Domain.Models.Core.E911;
+using Boss.Domain.Models.Core.HuntGroups;
+using Boss.Domain.Models.Core.Integration.WebHooks;
+using Boss.Domain.Models.CustomerService.Notifications;
+using Boss.Domain.Models.Finance.CustomObjects.BillingGeneration;
+using Boss.Domain.Models.Infrastructure.Paperwork;
+using Boss.Domain.Models.SignalR;
+using Boss.Infrastructure.Core.Data.Mapping;
+using Boss.Infrastructure.Core.Data.Mapping.Contract;
+
+namespace Boss.Infrastructure.Core.Data
+{
+    public class EFCoreContext : BaseContext<EFCoreContext, CoreBoundaryIdentifier>
+    {
+        public virtual DbSet<AccountBillingGroupCycle> AccountBillingGroupCycles { get; set; }
+        public virtual DbSet<AccountBillingGroup> AccountBillingGroups { get; set; }
+        public virtual DbSet<AccountNotification> AccountNotifications { get; set; }
+        public virtual DbSet<AccountCircuit> AccountCircuits { get; set; }
+        public virtual DbSet<AccountCircuitSerialNumber> AccountCircuitSerialNumbers { get; set; }
+        public virtual DbSet<AccountContact> AccountContacts { get; set; }
+        public virtual DbSet<AccountProduct> AccountProducts { get; set; }
+        public virtual DbSet<AccountNote> AccountNotes { get; set; }
+        public virtual DbSet<Account> Accounts { get; set; }
+        public virtual DbSet<AccountStat> AccountStat { get; set; }
+        public virtual DbSet<AccountsAcquisition> AccountsAcquisitions { get; set; }
+        public virtual DbSet<AccountCode> AccountCodes { get; set; }
+        public virtual DbSet<AccountCallingCard> AccountCallingCards { get; set; }
+        public virtual DbSet<ClliProductPricing> ClliProductPricings { get; set; }
+        public virtual DbSet<CompanyCode> CompanyCodes { get; set; }
+        public virtual DbSet<Contact> Contacts { get; set; }
+        public virtual DbSet<LDRate> LdRates { get; set; }
+        public virtual DbSet<CallingCardRate> CallingCardRates { get; set; }
+        public virtual DbSet<PhysicalAddress> PhysicalAddresses { get; set; }
+        public virtual DbSet<Product> Products { get; set; }
+        public virtual DbSet<SerialNo> SerialNoes { get; set; }
+        public virtual DbSet<SerialNoFeature> SerialNoFeatures { get; set; }
+        public virtual DbSet<HuntGroup> HuntGroups { get; set; }
+        public virtual DbSet<HuntGroupLine> HuntGroupLines { get; set; }
+        public virtual DbSet<ServiceDiscount> ServiceDiscounts { get; set; }
+        public virtual DbSet<ServiceAttribute> ServiceAttributes { get; set; }
+        public virtual DbSet<ServiceProduct> ServiceProducts { get; set; }
+        public virtual DbSet<Supplier> Suppliers { get; set; }
+        public virtual DbSet<PricingPlan> PricingPlans { get; set; }
+        public virtual DbSet<ServiceTreeController> ServiceTreeControllers { get; set; }
+        public virtual DbSet<Contract> Contracts { get; set; }
+        public virtual DbSet<ContractType> ContractTypes { get; set; }
+        public virtual DbSet<Agent> Agents { get; set; }
+        public virtual DbSet<AgentDealerType> AgentDealerTypes { get; set; }
+        public virtual DbSet<Payment> Payments { get; set; }
+        public virtual DbSet<CashSource> CashSources { get; set; }
+        public virtual DbSet<AccountPaperwork> AccountPaperwork { get; set; }
+        public virtual DbSet<PaperworkType> PaperworkTypes { get; set; }
+        public virtual DbSet<Invoice> Invoices { get; set; }
+        public virtual DbSet<AutoDraft> AutoDraft { get; set; }
+        public virtual DbSet<CustomerAgreement> CustomerAgreement { get; set; }
+        public virtual DbSet<BirchLegacyETF> LegacyBirchEft { get; set; }
+        public virtual DbSet<ProductFamily> ProductFamilies { get; set; }
+        public virtual DbSet<CompanyEntity> CompanyEntities { get; set; }
+        public virtual DbSet<State> States { get; set; }
+        public virtual DbSet<ProductCompanyEntities> ProductCompanyEnties { get; set; }
+        public virtual DbSet<BillRun> BillRun { get; set; }
+        public virtual DbSet<Itemize> Itemizes { get; set; }
+        public virtual DbSet<ItemizeAccountLocationProduct> ItemizeAccountLocationProducts { get; set; }
+        public virtual DbSet<Prepaid> Prepaids { get; set; }
+        public virtual DbSet<PrePaidAccountLocationProduct> PrePaidAccountLocationProducts { get; set; }
+        public virtual DbSet<OneTimeCharge> OneTimeCharges { get; set; }
+        public virtual DbSet<InvoiceDetails> InvoiceDetails { get; set; }
+        public virtual DbSet<InvoiceTaxDetails> InvoiceTaxDetails { get; set; }
+        public virtual DbSet<CallingCardLd> CClds { get; set; }
+        public virtual DbSet<Ld> Lds { get; set; }
+        public virtual DbSet<Oduf> Odufs { get; set; }
+        public virtual DbSet<ProductType> ProductTypes { get; set; }
+        public virtual DbSet<TollFreeNumber> TollFreeNumbers { get; set; }
+        public virtual DbSet<AccountCircuitIPAddress> AccountCircuitIpAddresses { get; set; }
+        public virtual DbSet<AccountCallLog> AccountCallLogs { get; set; }
+        public virtual DbSet<DerivedSupplier> DerivedSuppliers { get; set; }
+        public virtual DbSet<AnalysisAgentAccountLine> AnalysisAgentAccountLines { get; set; }
+        public virtual DbSet<ServiceDiscountReason> ServiceDiscountReasons { get; set; }
+        public virtual DbSet<ServiceDiscountEndReason> ServiceDiscounEndReasons { get; set; }
+        public virtual DbSet<HubGroup> HubGroups { get; set; }
+        public virtual DbSet<HubConnection> HubConnections { get; set; }
+        public virtual DbSet<HubUser> HubUsers { get; set; }
+        public virtual DbSet<CueDashboard> CueDashboards { get; set; }
+        public virtual DbSet<MarketingPromo> MarketingPromos { get; set; }
+        public virtual DbSet<HintQuestion> HintQuestions { get; set; }
+        public virtual DbSet<AffinityGroup> AffinityGroups { get; set; }
+        public virtual DbSet<ReferralProgram> ReferralPrograms { get; set; }
+        public virtual DbSet<AccountsReferred> AccountsReferrals { get; set; }
+        public DbSet<BillingGroup> BillingGroups { get; set; }
+        public virtual DbSet<ProductGroup> ProductGroups { get; set; }
+        public virtual DbSet<BillingTaxExemptCode> BillingTaxExemptCodes { get; set; }
+        public virtual DbSet<Adjustments> Adjustments { get; set; }
+        public virtual DbSet<PaymentProblem> PaymentProblems { get; set; }
+        public virtual DbSet<E911Address> E911Address { get; set; }
+        public virtual DbSet<E911SOIRecord> E911SoiRecord { get; set; }
+        public virtual DbSet<Assertion> Assertions { get; set; }
+        public virtual DbSet<AssertionType> AssertionTypes { get; set; }
+        public virtual DbSet<AccountAssertion> AccountAssertions { get; set; }
+        public virtual DbSet<AccountChurnUpgradeOpt> AccountChurnUpgradeOpts { get; set; }
+        public virtual DbSet<E911AddressHistory> E911AddressHistories { get; set; }
+        public virtual DbSet<CollectionIssue> CollectionIssues { get; set; }
+        public virtual DbSet<AccountsPendingCredit> AccountsPendingCredits { get; set; }
+        public virtual DbSet<MarketingPromoProduct> MarketingPromoProducts { get; set; }
+        public virtual DbSet<ContractProduct> ContractProducts { get; set; }
+        public virtual DbSet<AccountBillingType> AccountBillingTypes { get; set; }
+        public virtual DbSet<TaxZip> TaxZips { get; set; }
+        public virtual DbSet<Package> Packages { get; set; }
+        public virtual DbSet<PhysicalAddressName> PhysicalAddressesNames { get; set; }
+        public virtual DbSet<TaxMatrix> TaxMatrices { get; set; }
+        public virtual DbSet<TaxDetail> TaxDetails { get; set; }
+        public virtual DbSet<TaxExemptCodes> TaxExemptCodes { get; set; }
+        public virtual DbSet<TaxGeoCode> TaxGeoCodes { get; set; }
+        public virtual DbSet<NwCoLocationExecutiveReport> ColocationExecutiveReports { get; set; }
+        public virtual DbSet<InvoiceDetailLd> InvoiceDetailLds { get; set; }
+        public virtual DbSet<TexasFranchiseTaxMatrix> TexasFranchiseTaxMatrix { get; set; }
+        public virtual DbSet<OdufPricing> OdufPricings { get; set; }
+        public virtual DbSet<AccountAging> AccountAgings { get; set; }
+        public virtual DbSet<SerialTax> SerialTaxes { get; set; }
+        public virtual DbSet<SerialTaxAccountLocationProduct> SerialTaxAccountLocationProducts { get; set; }
+        public virtual DbSet<SerialTaxExempt> SerialTaxExempts { get; set; }
+        public virtual DbSet<SerialTaxExemptAccountLocationProduct> SerialTaxExemptAccountLocationProducts { get; set; }
+        public virtual DbSet<ProductsLdCommit> ProductsLdCommits { get; set; }
+        public virtual DbSet<BillingBatchRun> BillingBatchRuns { get; set; }
+        public virtual DbSet<BillingBatchRunDetail> BillingBatchDetails { get; set; }
+        public virtual DbSet<BillingAccountBatchDetail> BillingAccountBatchDetails { get; set; }
+        public virtual DbSet<BillingInvoiceTaxDataDto> BillingInvoiceTaxData { get; set; }
+        public virtual DbSet<BillingInvoiceTaxDetailDto> BillingInvoiceTaxDetails { get; set; }
+        public virtual DbSet<InvoicePhysicalAddress> InvoicePhysicalAddresses { get; set; }
+        public virtual DbSet<TaxNpaNxx> TaxNpaNxxes { get; set; }
+        public virtual DbSet<SprintEvdoUsageBill> SprintEvdoUsageBills { get; set; }
+        public virtual DbSet<THTenant> CarporateHousingTenants { get; set; }
+        public virtual DbSet<InvoiceDetailTenant> InvoiceDetailTenants { get; set; }
+        public virtual DbSet<BillingInvoiceDetailTenant> BillingInvoiceDetailTenants { get; set; }
+        public virtual DbSet<AnalysisBillRun> AnalysisBillRuns { get; set; }
+        public virtual DbSet<BillRunBalance> BillRunBalances { get; set; }
+        public virtual DbSet<AccountsFeeExempt> AccountsFeeExempt { get; set; }
+        public virtual DbSet<WebHookEventSubscription> WebHookEventSubscriptions { get; set; }
+        public virtual DbSet<WebHookEventSubscriptionHistory> WebHookEventHistories { get; set; }
+
+        public virtual DbSet<WebHookEventSubscriptionAction> WebHookEventActionSubscriptions { get; set; }
+        public virtual DbSet<WebHookEventSubscriptionAttribute> WebHookEventSubscriptionAttributes { get; set; }
+        public virtual DbSet<BillInsert> BillInserts { get; set; }
+        public virtual DbSet<BillInsertsAccount> BillInsertsAccounts { get; set; }
+        public virtual DbSet<AutoPay> AutoPays { get; set; }
+        public virtual DbSet<AuditReason> AuditReasons { get; set; }
+
+        public virtual DbSet<PrepaidInvoice> PrepaidInvoices { get; set; }
+        public virtual DbSet<AccountAuditReason> AccountAuditReasons { get; set; }
+        public virtual DbSet<AccountAudit> AccountAudits { get; set; }
+        public virtual DbSet<ForeignReferences> ForeignReferences { get; set; }
+        public virtual DbSet<RabbitStagingMessage> RabbitStagingMessages { get; set; }
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            modelBuilder.Configurations.Add(new E911AddressMap());
+            modelBuilder.Configurations.Add(new E911SOIRecordMap());
+            modelBuilder.Configurations.Add(new E911SOIMap());
+            modelBuilder.Configurations.Add(new NwIpAddressNonAinMap());
+            modelBuilder.Configurations.Add(new AccountBillingGroupCycleMap());
+            modelBuilder.Configurations.Add(new AccountBillingGroupMap());
+            modelBuilder.Configurations.Add(new NwIpAddressMap());
+            modelBuilder.Configurations.Add(new NwIpAddressStatuMap());
+            modelBuilder.Configurations.Add(new AccountCircuitMap());
+            modelBuilder.Configurations.Add(new AccountCircuitSerialNumberMap());
+            modelBuilder.Configurations.Add(new AccountContactMap());
+            modelBuilder.Configurations.Add(new AccountProductMap());
+            modelBuilder.Configurations.Add(new AccountMap());
+            modelBuilder.Configurations.Add(new AccountStatMap());
+            modelBuilder.Configurations.Add(new AdjustmentsMap());
+            modelBuilder.Configurations.Add(new AgentMap());
+            modelBuilder.Configurations.Add(new AgentDealerTypeMap());
+            modelBuilder.Configurations.Add(new AccountNoteMap());
+            modelBuilder.Configurations.Add(new AccountCodeMap());
+            modelBuilder.Configurations.Add(new AccountCallingCardMap());
+            modelBuilder.Configurations.Add(new AccountsAcquisitionMap());
+            modelBuilder.Configurations.Add(new AccountSourceMap());
+            modelBuilder.Configurations.Add(new BillingGroupMap());
+            modelBuilder.Configurations.Add(new ClliProductPricingMap());
+            modelBuilder.Configurations.Add(new CompanyCodeMap());
+            modelBuilder.Configurations.Add(new ContactMap());
+            modelBuilder.Configurations.Add(new LDRateMap());
+            modelBuilder.Configurations.Add(new CallingCardRateMap());
+            modelBuilder.Configurations.Add(new PhysicalAddressMap());
+            modelBuilder.Configurations.Add(new ProductFamilyMap());
+            modelBuilder.Configurations.Add(new PricingPlanMap());
+            modelBuilder.Configurations.Add(new ProductMap());
+            modelBuilder.Configurations.Add(new ServiceAttributeTypeMap());
+            modelBuilder.Configurations.Add(new ProductTypeMap());
+            modelBuilder.Configurations.Add(new SerialNoMap());
+            modelBuilder.Configurations.Add(new SerialNoFeatureMap());
+            modelBuilder.Configurations.Add(new HuntGroupMap());
+            modelBuilder.Configurations.Add(new HuntGroupLineMap());
+            modelBuilder.Configurations.Add(new ServiceDiscountMap());
+            modelBuilder.Configurations.Add(new ServiceAttributeMap());
+            modelBuilder.Configurations.Add(new ServiceProductMap());
+            modelBuilder.Configurations.Add(new ServiceTreeControllerMap());
+            modelBuilder.Configurations.Add(new SupplierMap());
+            modelBuilder.Configurations.Add(new ClliUNEZoneMap());
+            modelBuilder.Configurations.Add(new OneTimeChargeMap());
+            modelBuilder.Configurations.Add(new ContractLineMap());
+            modelBuilder.Configurations.Add(new ContractProductMap());
+            modelBuilder.Configurations.Add(new ContractMap());
+            modelBuilder.Configurations.Add(new ContractTermMap());
+            modelBuilder.Configurations.Add(new ProductCompanyEntityMap());
+            modelBuilder.Configurations.Add(new ContractTypeMap());
+            modelBuilder.Configurations.Add(new ServiceCenterMap());
+            modelBuilder.Configurations.Add(new LineOfBusinessMap());
+            modelBuilder.Configurations.Add(new PaymentMap());
+            modelBuilder.Configurations.Add(new CashSourceMap());
+            modelBuilder.Configurations.Add(new AccountPaperworkMap());
+            modelBuilder.Configurations.Add(new BillRunMap());
+            modelBuilder.Configurations.Add(new InvoiceMap());
+            modelBuilder.Configurations.Add(new InvoiceDetailMap());
+            modelBuilder.Configurations.Add(new InvoiceDetailTenantMap());
+            modelBuilder.Configurations.Add(new InvoiceErrorMap());
+            modelBuilder.Configurations.Add(new InvoicePhysicalAddressMap());
+            modelBuilder.Configurations.Add(new InvoiceStageMap());
+            modelBuilder.Configurations.Add(new SerialTaxMap());
+            modelBuilder.Configurations.Add(new SerialTaxAccountLocationProductMap());
+            modelBuilder.Configurations.Add(new SerialTaxExemptMap());
+            modelBuilder.Configurations.Add(new SerialTaxExemptAccountLocationProductMap());
+            modelBuilder.Configurations.Add(new THTenantMap());
+            modelBuilder.Configurations.Add(new AutoDraftMap());
+            modelBuilder.Configurations.Add(new CustomerAgreementMap());
+            modelBuilder.Configurations.Add(new BirchLegacyETFMap());
+            modelBuilder.Configurations.Add(new EliteMap());
+            modelBuilder.Configurations.Add(new EliteContactMap());
+            modelBuilder.Configurations.Add(new CollectionIssueMap());
+            modelBuilder.Configurations.Add(new CollectionStatusMap());
+            modelBuilder.Configurations.Add(new AccountCollectionProblemMap());
+            modelBuilder.Configurations.Add(new CompanyEntityMap());
+            modelBuilder.Configurations.Add(new StateMap());
+            modelBuilder.Configurations.Add(new ItemizeMap());
+            modelBuilder.Configurations.Add(new ItemizeAccountLocationProductMap());
+            modelBuilder.Configurations.Add(new PrepaidMap());
+            modelBuilder.Configurations.Add(new PrePaidAccountLocationProductMap());
+            modelBuilder.Configurations.Add(new ProductGroupMap());
+            modelBuilder.Configurations.Add(new InvoiceTaxDetailMap());
+            modelBuilder.Configurations.Add(new OdufMap());
+            modelBuilder.Configurations.Add(new CallingCardLdMap());
+            modelBuilder.Configurations.Add(new LdMap());
+            modelBuilder.Configurations.Add(new TollFreeNumberMap());
+            modelBuilder.Configurations.Add(new AccountCallLogMap());
+            modelBuilder.Configurations.Add(new DerivedSupplierMap());
+            modelBuilder.Configurations.Add(new AnalysisAgentAccountLineMap());
+            modelBuilder.Configurations.Add(new ServiceDiscountReasonMap());
+            modelBuilder.Configurations.Add(new ServiceDiscountEndReasonMap());
+            modelBuilder.Configurations.Add(new HintQuestionMap());
+            modelBuilder.Configurations.Add(new AffinityGroupMap());
+            modelBuilder.Configurations.Add(new ReferralProgramMap());
+            modelBuilder.Configurations.Add(new AccountsReferredMap());
+            modelBuilder.Configurations.Add(new ServiceItemBANMap());
+            modelBuilder.Configurations.Add(new BillingTaxExemptCodeMap());
+            modelBuilder.Configurations.Add(new PaymentProblemMap());
+            modelBuilder.Configurations.Add(new AssertionMap());
+            modelBuilder.Configurations.Add(new AssertionTypeMap());
+            modelBuilder.Configurations.Add(new AccountAssertionMap());
+            modelBuilder.Configurations.Add(new AccountChurnUpgradeOptMap());
+            modelBuilder.Configurations.Add(new E911AddressHistoryMap());
+            modelBuilder.Configurations.Add(new AccountsPendingCreditMap());
+            modelBuilder.Configurations.Add(new MarketingPromoMap());
+            modelBuilder.Configurations.Add(new MarketingPromoProductMap());
+            modelBuilder.Configurations.Add(new AccountBillingTypeMap());
+            modelBuilder.Configurations.Add(new TaxZipMap());
+            modelBuilder.Configurations.Add(new PackageMap());
+            modelBuilder.Configurations.Add(new PhysicalAddressNameMap());
+            modelBuilder.Configurations.Add(new TaxMatrixtMap());
+            modelBuilder.Configurations.Add(new TaxDetailMap());
+            modelBuilder.Configurations.Add(new TaxExemptCodesMap());
+            modelBuilder.Configurations.Add(new TaxGeoCodeMap());
+            modelBuilder.Configurations.Add(new NwCoLocationExecutiveReportMap());
+            modelBuilder.Configurations.Add(new InvoiceDetailLdMap());
+            modelBuilder.Configurations.Add(new TexasFranchiseTaxMatrixMap());
+            modelBuilder.Configurations.Add(new OdufPricingMap());
+            modelBuilder.Configurations.Add(new AccountAgingMap());
+            modelBuilder.Configurations.Add(new ProductsLdCommitMap());
+            modelBuilder.Configurations.Add(new BillingBatchRunsMap());
+            modelBuilder.Configurations.Add(new BillingBatchDetailsMap());
+            modelBuilder.Configurations.Add(new BillingAccountBatchDetailMap());
+            modelBuilder.Configurations.Add(new BillingInvoiceTaxDataMap());
+            modelBuilder.Configurations.Add(new BillingInvoiceTaxDetailMap());
+            modelBuilder.Configurations.Add(new TaxNpaNxxMap());
+            modelBuilder.Configurations.Add(new SprintEvdoUsageBillMap());
+            modelBuilder.Configurations.Add(new BillingInvoiceDetailTenantMap());
+            modelBuilder.Configurations.Add(new AnalysisBillRunMap());
+            modelBuilder.Configurations.Add(new BillRunBalanceMap());
+            modelBuilder.Configurations.Add(new AccountsFeeExemptMap());
+
+            modelBuilder.Configurations.Add(new BillInsertMap());
+            modelBuilder.Configurations.Add(new BillInsertsAccountMap());
+            modelBuilder.Configurations.Add(new AutoPayMap());
+            modelBuilder.Configurations.Add(new InvoiceNoticesMap());
+            modelBuilder.Configurations.Add(new InvoiceNoticesAccountsMap());
+            modelBuilder.Configurations.Add(new AuditReasonsMap());
+            modelBuilder.Configurations.Add(new PrepaidInvoiceMap());
+            modelBuilder.Configurations.Add(new AccountAuditReasonMap());
+            modelBuilder.Configurations.Add(new AccountAuditMap());
+            modelBuilder.Configurations.Add(new ForeignReferenceMap());
+            modelBuilder.Configurations.Add(new RabbitStagingMessageMap());
+            base.OnModelCreating(modelBuilder);
+        }
+    }
+}

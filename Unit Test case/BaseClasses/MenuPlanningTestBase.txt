@@ -1,0 +1,75 @@
+﻿using System;
+using System.Web.Http.Controllers;
+using Microsoft.Practices.Unity;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using MosaicBOH.Business;
+using MosaicBOH.Business.Interfaces;
+using MosaicBOH.Data;
+using MosaicBOH.UnitTests.Business;
+
+namespace MosaicBOH.UnitTests.BaseClasses
+{
+    /// <summary>
+    /// Base class for testing service methods (MenuPlanning)
+    /// Utilizes FakeMosaicContext to keep EntityFramework out of the way
+    /// Initializes MenuPlanning with test district and user, which is probably needed throughout all tests
+    /// </summary>
+    public class MenuPlanningTestBase : BaseUnitTest, IDisposable
+    {
+        private bool _isDisposed;
+
+        #region Initialization
+        public MenuPlanningTestBase()
+        {
+            Container
+                .RegisterType<IMosaicContext, FakeMosaicContext>(new ContainerControlledLifetimeManager())
+                .RegisterType<IMenuPlanning, MenuPlanning>(new ContainerControlledLifetimeManager());
+
+            //make sure each test has a district, with a user, in both the database,
+            //and wired into MenuPlanning to avoid HttpSessionState issues.
+            MosaicContext = Resolve<IMosaicContext>();
+            MenuPlanning = Resolve<IMenuPlanning>();
+
+            Factory = new Factory(MosaicContext, MenuPlanning);
+
+            var testDistrict = Factory.CreateNewDistrict(true);
+            Factory.CreateNewUser(testDistrict, null, true);
+        }
+
+        #region IDisposable members        
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        // Allow for derived classes to tear down variables.
+        protected virtual void Dispose(bool isDisposing)
+        {
+            if (_isDisposed) return;
+            if (isDisposing)
+            {
+                // Clear down managed resources.
+                MosaicContext?.Dispose();
+                MosaicContext = null;
+                MenuPlanning?.Dispose();
+                MenuPlanning = null;
+            }
+
+            _isDisposed = true;
+        }
+        #endregion
+        
+        #endregion
+        
+
+        #region Properties
+
+        protected IMenuPlanning MenuPlanning { get; private set; }
+        protected IMosaicContext MosaicContext { get; private set; }
+        protected Factory Factory { get; private set; }
+
+        protected MenuPlanning MenuPlanningWithContext { get; private set; }
+        #endregion
+
+    }
+}

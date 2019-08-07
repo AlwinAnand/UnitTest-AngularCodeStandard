@@ -1,0 +1,146 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel.DataAnnotations;
+using System.Data.Entity;
+using System.Linq;
+using System.Reflection;
+using MosaicBOH.Common;
+
+namespace MosaicBOH.UnitTests
+{
+    public class FakeDBSet<T> : IDbSet<T> where T : EntityBase
+    {
+        ObservableCollection<T> _data;
+        IQueryable _query;
+        Func<T, object> _keyFunction;
+        public FakeDBSet(Func<T, object> KeyFunction)
+        {
+            _data = new ObservableCollection<T>();
+            _query = _data.AsQueryable();
+            _keyFunction = KeyFunction;
+        }
+        public FakeDBSet()
+        {
+            _data = new ObservableCollection<T>();
+            _query = _data.AsQueryable();
+            _keyFunction = CreateKeyFunctionFromGenericType();
+            if (_keyFunction == null)
+            {
+                throw new ApplicationException(String.Format("Cannot create FakeDBSet for Type {0} because it does not have a defined key value", typeof(T).FullName));
+            }
+        }
+        #region IDbSet
+        public virtual T Add(T entity)
+        {
+            var keyProperty = entity.GetType().GetProperties().FirstOrDefault(p => p.GetCustomAttribute<KeyAttribute>() != null);
+            if (keyProperty != null)
+            {
+                var keyValue = keyProperty.GetValue(entity);
+                if (keyValue == null || (keyValue is Guid && (Guid) keyValue == Guid.Empty))
+                {
+                    keyProperty.SetValue(entity, Guid.NewGuid());
+                }
+                else if (_data.Contains(entity))
+                {
+                    return entity;
+                }
+            }
+
+            _data.Add(entity);
+            return entity;
+        }
+
+        public virtual T Attach(T entity)
+        {
+            _data.Add(entity);
+            return entity;
+        }
+
+        public virtual TDerivedEntity Create<TDerivedEntity>() where TDerivedEntity : class, T
+        {
+            return Activator.CreateInstance<TDerivedEntity>();
+        }
+
+        public T Create()
+        {
+            return Activator.CreateInstance<T>();
+        }
+
+        public virtual T Find(params object[] keyValues)
+        {
+            object key = keyValues.FirstOrDefault();
+            return _data.Where(x => _keyFunction(x).Equals(key)).FirstOrDefault();
+        }
+
+        public System.Collections.ObjectModel.ObservableCollection<T> Local
+        {
+            get { return _data; }
+        }
+
+        public T Remove(T entity)
+        {
+            _data.Remove(entity);
+            return entity;
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            return _data.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return _data.GetEnumerator();
+        }
+
+        public Type ElementType
+        {
+            get { return _query.ElementType; }
+        }
+
+        public System.Linq.Expressions.Expression Expression
+        {
+            get { return _query.Expression; }
+        }
+
+        public IQueryProvider Provider
+        {
+            get { return _query.Provider; }
+        }
+        #endregion
+        #region Static Factory
+        public static FakeDBSet<TEntity> CreateFakeDBSet<TEntity>(IEnumerable<TEntity> data, Func<TEntity, object> key) where TEntity : EntityBase
+        {
+            FakeDBSet<TEntity> set = new FakeDBSet<TEntity>(key);
+            foreach (TEntity t in data)
+                set.Add(t);
+            return set;
+            
+        }
+
+        //public static IDbSet<T> MockDBSet<T>(IEnumerable<T> data) where T:class
+        //{
+        //    Mock<IDbSet<T>> set = new Mock<IDbSet<T>>();
+        //    set.Setup(x => x.GetEnumerator()).Returns(() => data.GetEnumerator());
+        //    set.Object.
+        //}
+        #endregion
+
+        public Func<T, object> CreateKeyFunctionFromGenericType()
+        {
+            Func<T, object> func = null;
+            Type typ = typeof(T);
+            typ.GetProperties(BindingFlags.Public | BindingFlags.Instance).ForEach(pi =>
+                {
+                    KeyAttribute key = pi.GetCustomAttribute<KeyAttribute>();
+                    if (key != null)
+                    {
+                        func= (T t) => pi.GetValue(t);
+                    }
+                });
+            return func;
+        }
+    }
+     
+}

@@ -1,0 +1,527 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data.Entity;
+using System.Linq;
+using System.Linq.Expressions;
+using MosaicBOH.Business.Entities;
+using MosaicBOH.Business.Entities.DTO;
+using MosaicBOH.Common;
+
+namespace MosaicBOH.UnitTests.BaseClasses
+{
+    public partial class FakeMosaicContext
+    {
+        private IDbSet<Classification> _classifications = new FakeDBSet<Classification>();
+
+        public IDbSet<Classification> Classifications { get { return _classifications; } set { _classifications = value; } }
+
+        private IDbSet<ItemBase> _itemBases = new FakeDBSet<ItemBase>();
+        public IDbSet<ItemBase> ItemBases { get { return _itemBases; } set { _itemBases = value; } }
+
+        private IDbSet<ImageInfo> _imageInfos = new FakeDBSet<ImageInfo>();
+        public IDbSet<ImageInfo> ImageInfos { get { return _imageInfos; } set { _imageInfos = value; } }
+
+        private IDbSet<ImageBinary> _imageBinaries = new FakeDBSet<ImageBinary>();
+        public IDbSet<ImageBinary> ImageBinaries { get { return _imageBinaries; } set { _imageBinaries = value; } }
+
+        private IDbSet<ImageThumbnail> _imageThumbnails = new FakeDBSet<ImageThumbnail>();
+        public IDbSet<ImageThumbnail> ImageThumbnails { get { return _imageThumbnails; } set { _imageThumbnails = value; } }
+
+        private IDbSet<Ingredient> _ingredients = new FakeDBSet<Ingredient>();
+        public IDbSet<Ingredient> Ingredients { get { return _ingredients; } set { _ingredients = value; } }
+
+        private IDbSet<UnitOfMeasure> _unitsOfMeasure = new FakeDBSet<UnitOfMeasure>();
+        public IDbSet<UnitOfMeasure> UnitsOfMeasure { get { return _unitsOfMeasure; } set { _unitsOfMeasure = value; } }
+
+        private IDbSet<District> _districts = new FakeDBSet<District>();
+        public IDbSet<District> Districts { get { return _districts; } set { _districts = value; } }
+
+        private IDbSet<IngredientClass> _ingredientClasses = new FakeDBSet<IngredientClass>();
+        public IDbSet<IngredientClass> IngredientClasses { get { return _ingredientClasses; } set { _ingredientClasses = value; } }
+
+        private IDbSet<ItemBaseAttachment> _ingredientAttachments = new FakeDBSet<ItemBaseAttachment>();
+        public IDbSet<ItemBaseAttachment> ItemBaseAttachments { get { return _ingredientAttachments; } set { _ingredientAttachments = value; } }
+
+        private IDbSet<UniversalMeasurement> _universalMeasurements = new FakeDBSet<UniversalMeasurement>();
+        public IDbSet<UniversalMeasurement> UniversalMeasurements { get { return _universalMeasurements; } set { _universalMeasurements = value; } }
+
+        private IDbSet<IngredientNutrition> _ingredientNutritions = new FakeDBSet<IngredientNutrition>();
+        public IDbSet<IngredientNutrition> IngredientNutritions { get { return _ingredientNutritions; } set { _ingredientNutritions = value; } }
+
+        private IDbSet<IngredientSitePhysicalCount> _ingredientSitePhysicalCount = new FakeDBSet<IngredientSitePhysicalCount>();
+        public IDbSet<IngredientSitePhysicalCount> IngredientSitePhysicalCounts { get { return _ingredientSitePhysicalCount; } set { _ingredientSitePhysicalCount = value; } }
+
+        private IDbSet<IngredientPurchaseInfoItem> _ingredientPurchaseInfoItem = new FakeDBSet<IngredientPurchaseInfoItem>();
+        public IDbSet<IngredientPurchaseInfoItem> IngredientPurchaseInfoItems { get { return _ingredientPurchaseInfoItem; } set { _ingredientPurchaseInfoItem = value; } }
+
+        private IDbSet<User> _users = new FakeDBSet<User>();
+        public IDbSet<User> Users { get { return _users; } set { _users = value; } }
+
+        private IDbSet<Manufacturer> _manufacturers = new FakeDBSet<Manufacturer>();
+        public IDbSet<Manufacturer> Manufacturers { get { return _manufacturers; } set { _manufacturers = value; } }
+
+        private IDbSet<Source> _sources = new FakeDBSet<Source>();
+        public IDbSet<Source> Sources { get { return _sources; } set { _sources = value; } }
+
+        private IDbSet<CNBuyingGuide> _cnBuyingGuide = new FakeDBSet<CNBuyingGuide>();
+        public IDbSet<CNBuyingGuide> CNBuyingGuide { get { return _cnBuyingGuide; } set { _cnBuyingGuide = value; } }
+
+        private IDbSet<CNBuyingGuideLink> _cnBuyingGuideLink = new FakeDBSet<CNBuyingGuideLink>();
+        public IDbSet<CNBuyingGuideLink> CNBuyingGuideLinks { get { return _cnBuyingGuideLink; } set { _cnBuyingGuideLink = value; } }
+
+        private IDbSet<CNBuyingGuideUSDA> _cnBuyingGuideUSDA = new FakeDBSet<CNBuyingGuideUSDA>();
+        public IDbSet<CNBuyingGuideUSDA> CNBuyingGuideUSDA { get { return _cnBuyingGuideUSDA; } set { _cnBuyingGuideUSDA = value; } }
+
+        private IDbSet<CNBuyingGuideLinkUSDA> _cnBuyingGuideLinksUSDA = new FakeDBSet<CNBuyingGuideLinkUSDA>();
+        public IDbSet<CNBuyingGuideLinkUSDA> CNBuyingGuideLinksUSDA { get { return _cnBuyingGuideLinksUSDA; } set { _cnBuyingGuideLinksUSDA = value; } }
+
+        private IDbSet<CNFoodCategoryName> _cnFoodCategoryNames = new FakeDBSet<CNFoodCategoryName>();
+        public IDbSet<CNFoodCategoryName> CNFoodCategoryNames { get { return _cnFoodCategoryNames; } set { _cnFoodCategoryNames = value; } }
+
+        private IDbSet<CNFoodDescription> _cnFoodDescriptions = new FakeDBSet<CNFoodDescription>();
+        public IDbSet<CNFoodDescription> CNFoodDescriptions { get { return _cnFoodDescriptions; } set { _cnFoodDescriptions = value; } }
+
+        private IDbSet<CNNutrientDescription> _cnNutrientDescriptions = new FakeDBSet<CNNutrientDescription>();
+        public IDbSet<CNNutrientDescription> CNNutrientDescriptions { get { return _cnNutrientDescriptions; } set { _cnNutrientDescriptions = value; } }
+
+        private IDbSet<CNNutrientValue> _cnNutrientValues = new FakeDBSet<CNNutrientValue>();
+        public IDbSet<CNNutrientValue> CNNutrientValues { get { return _cnNutrientValues; } set { _cnNutrientValues = value; } }
+
+        private IDbSet<CNWeightAndMeasureDescription> _cnWeightAndMeasureDescriptions = new FakeDBSet<CNWeightAndMeasureDescription>();
+        public IDbSet<CNWeightAndMeasureDescription> CNWeightAndMeasureDescriptions { get { return _cnWeightAndMeasureDescriptions; } set { _cnWeightAndMeasureDescriptions = value; } }
+
+        private IDbSet<USDASource> _usdaSources = new FakeDBSet<USDASource>();
+        public IDbSet<USDASource> USDASources { get { return _usdaSources; } set { _usdaSources = value; } }
+
+        private IDbSet<IngredientMeasurement> _ingredientMeasurements = new FakeDBSet<IngredientMeasurement>();
+        public IDbSet<IngredientMeasurement> IngredientMeasurements { get { return _ingredientMeasurements; } set { _ingredientMeasurements = value; } }
+
+        private IDbSet<RecipeGroupCode> _recipeGroupCodes = new FakeDBSet<RecipeGroupCode>();
+        public IDbSet<RecipeGroupCode> RecipeGroupCodes { get { return _recipeGroupCodes; } set { _recipeGroupCodes = value; } }
+
+        private IDbSet<Recipe> _recipes = new FakeDBSet<Recipe>();
+        public IDbSet<Recipe> Recipes { get { return _recipes; } set { _recipes = value; } }
+
+        private IDbSet<Allergen> _allergens = new FakeDBSet<Allergen>();
+        public IDbSet<Allergen> Allergens { get { return _allergens; } set { _allergens = value; } }
+
+        private IDbSet<ItemBaseAllergen> _itemBaseAllergens = new FakeDBSet<ItemBaseAllergen>();
+        public IDbSet<ItemBaseAllergen> ItemBaseAllergens { get { return _itemBaseAllergens; } set { _itemBaseAllergens = value; } }
+
+        private IDbSet<Product> _products = new FakeDBSet<Product>();
+        public IDbSet<Product> Products { get { return _products; } set { _products = value; } }
+
+        private IDbSet<Item> _items = new FakeDBSet<Item>();
+        public IDbSet<Item> Items { get { return _items; } set { _items = value; } }
+
+        private IDbSet<ProductItemLimit> _productItemLimits = new FakeDBSet<ProductItemLimit>();
+        public IDbSet<ProductItemLimit> ProductItemLimits { get { return _productItemLimits; } set { _productItemLimits = value; } }       
+
+        private IDbSet<ProductCategory> _productCategories = new FakeDBSet<ProductCategory>();
+        public IDbSet<ProductCategory> ProductCategories { get { return _productCategories; } set { _productCategories = value; } }
+
+        private IDbSet<PriceList> _priceLists = new FakeDBSet<PriceList>();
+        public IDbSet<PriceList> PriceLists { get { return _priceLists; } set { _priceLists = value; } }
+
+        private IDbSet<PriceListItem> _priceListItems = new FakeDBSet<PriceListItem>();
+        public IDbSet<PriceListItem> PriceListItems { get { return _priceListItems; } set { _priceListItems = value; } }
+
+        private IDbSet<PhysicalCount> _physicalCounts = new FakeDBSet<PhysicalCount>();
+        public IDbSet<PhysicalCount> PhysicalCounts { get { return _physicalCounts; } set { _physicalCounts = value; } }
+
+        private IDbSet<PhysicalCountItem> _physicalCountItems = new FakeDBSet<PhysicalCountItem>();
+        public IDbSet<PhysicalCountItem> PhysicalCountItems { get { return _physicalCountItems; } set { _physicalCountItems = value; } }
+
+        private IDbSet<RecipeIngredient> _recipeIngredients = new FakeDBSet<RecipeIngredient>();
+        public IDbSet<RecipeIngredient> RecipeIngredients { get { return _recipeIngredients; } set { _recipeIngredients = value; } }
+
+        private IDbSet<RecipeInstruction> _recipeInstructions = new FakeDBSet<RecipeInstruction>();
+        public IDbSet<RecipeInstruction> RecipeInstructions { get { return _recipeInstructions; } set { _recipeInstructions = value; } }
+
+        private IDbSet<RecipeInstructionHACCPInstruction> _recipeInstructionHACCPInstructions = new FakeDBSet<RecipeInstructionHACCPInstruction>();
+        public IDbSet<RecipeInstructionHACCPInstruction> RecipeInstructionHACCPInstructions { get { return _recipeInstructionHACCPInstructions; } set { _recipeInstructionHACCPInstructions = value; } }
+
+        private IDbSet<RecipeHACCPProcess> _recipeHACCPProcesses = new FakeDBSet<RecipeHACCPProcess>();
+        public IDbSet<RecipeHACCPProcess> RecipeHACCPProcesses { get { return _recipeHACCPProcesses; } set { _recipeHACCPProcesses = value; } }
+
+        private IDbSet<RecipeHACCPInstruction> _recipeHACCPInstructions = new FakeDBSet<RecipeHACCPInstruction>();
+        public IDbSet<RecipeHACCPInstruction> RecipeHACCPInstructions { get { return _recipeHACCPInstructions; } set { _recipeHACCPInstructions = value; } }
+
+        private IDbSet<RecipeHACCPInstructionCategory> _recipeHACCPInstructionCategories = new FakeDBSet<RecipeHACCPInstructionCategory>();
+        public IDbSet<RecipeHACCPInstructionCategory> RecipeHACCPInstructionCategories { get { return _recipeHACCPInstructionCategories; } set { _recipeHACCPInstructionCategories = value; } }
+
+        private IDbSet<RecipeSubgroup> _recipeSubgroups = new FakeDBSet<RecipeSubgroup>();
+        public IDbSet<RecipeSubgroup> RecipeSubgroups { get { return _recipeSubgroups; } set { _recipeSubgroups = value; } }
+
+        private IDbSet<ServingPeriod> _servingPeriods = new FakeDBSet<ServingPeriod>();
+        public IDbSet<ServingPeriod> ServingPeriods { get { return _servingPeriods; } set { _servingPeriods = value; } }
+
+        private IDbSet<MealAgeGroup> _mealAgeGroups = new FakeDBSet<MealAgeGroup>();
+        public IDbSet<MealAgeGroup> MealAgeGroups { get { return _mealAgeGroups; } set { _mealAgeGroups = value; } }
+
+        private IDbSet<MealPattern> _mealPatterns = new FakeDBSet<MealPattern>();
+        public IDbSet<MealPattern> MealPatterns { get { return _mealPatterns; } set { _mealPatterns = value; } }
+
+        private IDbSet<MealNutrientStandard> _mealNutrientStandards = new FakeDBSet<MealNutrientStandard>();
+        public IDbSet<MealNutrientStandard> MealNutrientStandards { get { return _mealNutrientStandards; } set { _mealNutrientStandards = value; } }
+
+        private IDbSet<PlannedMenu> _plannedMenus = new FakeDBSet<PlannedMenu>();
+        public IDbSet<PlannedMenu> PlannedMenus { get { return _plannedMenus; } set { _plannedMenus = value; } }
+
+        private IDbSet<PlannedMenuDate> _plannedMenuDates = new FakeDBSet<PlannedMenuDate>();
+        public IDbSet<PlannedMenuDate> PlannedMenuDates { get { return _plannedMenuDates; } set { _plannedMenuDates = value; } }
+
+        private IDbSet<PlannedMenuDateRecipe> _plannedMenuDateRecipes = new FakeDBSet<PlannedMenuDateRecipe>();
+        public IDbSet<PlannedMenuDateRecipe> PlannedMenuDateRecipes { get { return _plannedMenuDateRecipes; } set { _plannedMenuDateRecipes = value; } }
+
+        private IDbSet<Site> _sites = new FakeDBSet<Site>();
+        public IDbSet<Site> Sites { get { return _sites; } set { _sites = value; } }
+
+        private IDbSet<PlannedMenuSite> _plannedMenuSites = new FakeDBSet<PlannedMenuSite>();
+        public IDbSet<PlannedMenuSite> PlannedMenuSites { get { return _plannedMenuSites; } set { _plannedMenuSites = value; } }
+
+        private IDbSet<PlannedMenuDateSiteProduction> _plannedMenuDateSiteProductionQuantities = new FakeDBSet<PlannedMenuDateSiteProduction>();
+        public IDbSet<PlannedMenuDateSiteProduction> PlannedMenuDateSiteProductionQuantities { get { return _plannedMenuDateSiteProductionQuantities; } set { _plannedMenuDateSiteProductionQuantities = value; } }
+
+        private IDbSet<PlannedMenuDateSiteTempRecording> _plannedMenuDateSiteTempRecordings = new FakeDBSet<PlannedMenuDateSiteTempRecording>();
+        public IDbSet<PlannedMenuDateSiteTempRecording> PlannedMenuDateSiteTempRecordings { get { return _plannedMenuDateSiteTempRecordings; } set { _plannedMenuDateSiteTempRecordings = value; } }
+
+        private IDbSet<RecipeSubgroupCategory> _recipeSubgroupCategories = new FakeDBSet<RecipeSubgroupCategory>();
+        public IDbSet<RecipeSubgroupCategory> RecipeSubgroupCategories { get { return _recipeSubgroupCategories; } set { _recipeSubgroupCategories = value; } }
+
+        private IDbSet<RecipeSubgroupCategoryVegetableType> _recipeSubgroupCategoryVegetableTypes = new FakeDBSet<RecipeSubgroupCategoryVegetableType>();
+        public IDbSet<RecipeSubgroupCategoryVegetableType> RecipeSubgroupCategoryVegetableTypes { get { return _recipeSubgroupCategoryVegetableTypes; } set { _recipeSubgroupCategoryVegetableTypes = value; } }
+
+        private IDbSet<MilkType> _milkTypes = new FakeDBSet<MilkType>();
+        public IDbSet<MilkType> MilkTypes { get { return _milkTypes; } set { _milkTypes = value; } }
+
+        private IDbSet<PlannedMenuDateMealGroup> _plannedMenuDateMealGroups = new FakeDBSet<PlannedMenuDateMealGroup>();
+        public IDbSet<PlannedMenuDateMealGroup> PlannedMenuDateMealGroups { get { return _plannedMenuDateMealGroups; } set { _plannedMenuDateMealGroups = value; } }
+
+        private IDbSet<PlannedMenuDateMealGroupRecipe> _plannedMenuDateMealGroupRecipes = new FakeDBSet<PlannedMenuDateMealGroupRecipe>();
+        public IDbSet<PlannedMenuDateMealGroupRecipe> PlannedMenuDateMealGroupRecipes { get { return _plannedMenuDateMealGroupRecipes; } set { _plannedMenuDateMealGroupRecipes = value; } }
+
+        private IDbSet<PlannedMenuDateMealViewerDisplayGroup> _plannedMenuDateMealViewerDisplayGroups = new FakeDBSet<PlannedMenuDateMealViewerDisplayGroup>();
+        public IDbSet<PlannedMenuDateMealViewerDisplayGroup> PlannedMenuDateMealViewerDisplayGroups { get { return _plannedMenuDateMealViewerDisplayGroups; } set { _plannedMenuDateMealViewerDisplayGroups = value; } }
+
+        private IDbSet<PlannedMenuDateRecipeMealViewerDisplayGroup> _plannedMenuDateRecipesMealViewerDisplayGroups = new FakeDBSet<PlannedMenuDateRecipeMealViewerDisplayGroup>();
+        public IDbSet<PlannedMenuDateRecipeMealViewerDisplayGroup> PlannedMenuDateRecipesMealViewerDisplayGroups { get { return _plannedMenuDateRecipesMealViewerDisplayGroups; } set { _plannedMenuDateRecipesMealViewerDisplayGroups = value; } }
+
+        private IDbSet<MealNutrientStandardComponentRequirement> _mealNutrientStandardComponentRequirements = new FakeDBSet<MealNutrientStandardComponentRequirement>();
+        public IDbSet<MealNutrientStandardComponentRequirement> MealNutrientStandardComponentRequirements { get { return _mealNutrientStandardComponentRequirements; } set { _mealNutrientStandardComponentRequirements = value; } }
+
+        private IDbSet<ProductionRecordReportFormat> _productionRecordReportFormats = new FakeDBSet<ProductionRecordReportFormat>();
+        public IDbSet<ProductionRecordReportFormat> ProductionRecordReportFormats { get { return _productionRecordReportFormats; } set { _productionRecordReportFormats = value; } }
+
+        private IDbSet<MenuPlanCalendarFormat> _MenuPlanCalendarFormats = new FakeDBSet<MenuPlanCalendarFormat>();
+        public IDbSet<MenuPlanCalendarFormat> MenuPlanCalendarFormats { get { return _MenuPlanCalendarFormats; } set { _MenuPlanCalendarFormats = value; } }
+
+        private IDbSet<MenuPlanCalendarFormatExcludedAllergen> _MenuPlanCalendarFormatExcludedAllergens = new FakeDBSet<MenuPlanCalendarFormatExcludedAllergen>();
+        public IDbSet<MenuPlanCalendarFormatExcludedAllergen> MenuPlanCalendarFormatExcludedAllergens { get { return _MenuPlanCalendarFormatExcludedAllergens; } set { _MenuPlanCalendarFormatExcludedAllergens = value; } }
+
+        private IDbSet<MenuPlanCalendarFormatImage> _MenuPlanCalendarFormatImages = new FakeDBSet<MenuPlanCalendarFormatImage>();
+        public IDbSet<MenuPlanCalendarFormatImage> MenuPlanCalendarFormatImages { get { return _MenuPlanCalendarFormatImages; } set { _MenuPlanCalendarFormatImages = value; } }
+
+        private IDbSet<ProductionRecordReportFormatColumn> _productionRecordReportFormatColumns = new FakeDBSet<ProductionRecordReportFormatColumn>();
+        public IDbSet<ProductionRecordReportFormatColumn> ProductionRecordReportFormatColumns { get { return _productionRecordReportFormatColumns; } set { _productionRecordReportFormatColumns = value; } }
+
+        private IDbSet<ProductionRecordReportFormatColumnType> _productionRecordReportFormatColumnTypes = new FakeDBSet<ProductionRecordReportFormatColumnType>();
+        public IDbSet<ProductionRecordReportFormatColumnType> ProductionRecordReportFormatColumnTypes { get { return _productionRecordReportFormatColumnTypes; } set { _productionRecordReportFormatColumnTypes = value; } }
+
+        private IDbSet<SecurityGroup> _securityGroups = new FakeDBSet<SecurityGroup>();
+        public IDbSet<SecurityGroup> SecurityGroups { get { return _securityGroups; } set { _securityGroups = value; } }
+
+        private IDbSet<SecurityPage> _securityPages = new FakeDBSet<SecurityPage>();
+        public IDbSet<SecurityPage> SecurityPages { get { return _securityPages; } set { _securityPages = value; } }
+
+        private IDbSet<Vendor> _vendors = new FakeDBSet<Vendor>();
+        public IDbSet<Vendor> Vendors { get { return _vendors; } set { _vendors = value; } }
+
+        private IDbSet<VendorContact> _vendorContacts = new FakeDBSet<VendorContact>();
+        public IDbSet<VendorContact> VendorContacts { get { return _vendorContacts; } set { _vendorContacts = value; } }
+
+        private IDbSet<ItemNote> _itemNotes = new FakeDBSet<ItemNote>();
+        public IDbSet<ItemNote> ItemNotes { get { return _itemNotes; } set { _itemNotes = value; } }
+
+        private IDbSet<ItemAttachment> _itemAttachments = new FakeDBSet<ItemAttachment>();
+        public IDbSet<ItemAttachment> ItemAttachments { get { return _itemAttachments; } set { _itemAttachments = value; } }
+
+        private IDbSet<Country> _countries = new FakeDBSet<Country>();
+        public IDbSet<Country> Countries { get { return _countries; } set { _countries = value; } }
+
+        private IDbSet<SystemSetting> _systemSettings = new FakeDBSet<SystemSetting>();
+        public IDbSet<SystemSetting> SystemSettings { get { return _systemSettings; } set { _systemSettings = value; } }
+
+        private IDbSet<SystemSettingValue> _systemSettingsValue = new FakeDBSet<SystemSettingValue>();
+        public IDbSet<SystemSettingValue> SystemSettingValues { get { return _systemSettingsValue; } set { _systemSettingsValue = value; } }
+
+        private IDbSet<AdjustmentReason> _adjustmentReasons = new FakeDBSet<AdjustmentReason>();
+        public IDbSet<AdjustmentReason> AdjustmentReasons { get { return _adjustmentReasons; } set { _adjustmentReasons = value; } }
+
+        private IDbSet<SiteGroup> _siteGroups = new FakeDBSet<SiteGroup>();
+        public IDbSet<SiteGroup> SiteGroups { get { return _siteGroups; } set { _siteGroups = value; } }
+
+        private IDbSet<Adjustment> _adjustments = new FakeDBSet<Adjustment>();
+        public IDbSet<Adjustment> Adjustments { get { return _adjustments; } set { _adjustments = value; } }
+
+        private IDbSet<InventoryTransaction> _inventoryTransactions = new FakeDBSet<InventoryTransaction>();
+        public IDbSet<InventoryTransaction> InventoryTransactions { get { return _inventoryTransactions; } set { _inventoryTransactions = value; } }
+
+        private IDbSet<InventoryTransactionDetail> _inventoryTransactionDetails = new FakeDBSet<InventoryTransactionDetail>();
+        public IDbSet<InventoryTransactionDetail> InventoryTransactionDetails { get { return _inventoryTransactionDetails; } set { _inventoryTransactionDetails = value; } }
+
+        private IDbSet<InventoryTransactionItemAvailability> _inventoryTransactionItemAvailabilities = new FakeDBSet<InventoryTransactionItemAvailability>();
+        public IDbSet<InventoryTransactionItemAvailability> InventoryTransactionItemAvailabilities { get { return _inventoryTransactionItemAvailabilities; } set { _inventoryTransactionItemAvailabilities = value; } }
+
+        private IDbSet<SiteType> _siteTypes = new FakeDBSet<SiteType>();
+        public IDbSet<SiteType> SiteTypes { get { return _siteTypes; } set { _siteTypes = value; } }
+
+        private IDbSet<Usage> _usages = new FakeDBSet<Usage>();
+        public IDbSet<Usage> Usages { get { return _usages; } set { _usages = value; } }
+
+        private IDbSet<UsageItem> _usageItems = new FakeDBSet<UsageItem>();
+        public IDbSet<UsageItem> UsageItems { get { return _usageItems; } set { _usageItems = value; } }
+
+        private IDbSet<FulfillmentStatus> _fulfillmentStatuses = new FakeDBSet<FulfillmentStatus>();
+        public IDbSet<FulfillmentStatus> FulfillmentStatuses { get { return _fulfillmentStatuses; } set { _fulfillmentStatuses = value; } }
+
+        private IDbSet<Receiving> _receivings = new FakeDBSet<Receiving>();
+        public IDbSet<Receiving> Receivings { get { return _receivings; } set { _receivings = value; } }
+
+        private IDbSet<ReceivingType> _receivingTypes = new FakeDBSet<ReceivingType>();
+        public IDbSet<ReceivingType> ReceivingTypes { get { return _receivingTypes; } set { _receivingTypes = value; } }
+
+        private IDbSet<ReceivingException> _receivingExceptions = new FakeDBSet<ReceivingException>();
+        public IDbSet<ReceivingException> ReceivingExceptions { get { return _receivingExceptions; } set { _receivingExceptions = value; } }
+
+        private IDbSet<ReceivingItem> _receivingItems = new FakeDBSet<ReceivingItem>();
+        public IDbSet<ReceivingItem> ReceivingItems { get { return _receivingItems; } set { _receivingItems = value; } }
+
+        private IDbSet<InventoryTransactionType> _inventoryTransactionTypes = new FakeDBSet<InventoryTransactionType>();
+        public IDbSet<InventoryTransactionType> InventoryTransactionTypes { get { return _inventoryTransactionTypes; } set { _inventoryTransactionTypes = value; } }
+
+        private IDbSet<CommunityRecipe> _communityRecipes = new FakeDBSet<CommunityRecipe>();
+        public IDbSet<CommunityRecipe> CommunityRecipes
+        {
+            get
+            {
+                foreach (var communityRecipe in _communityRecipes.Where(c => c.Recipe == null))
+                {
+                    communityRecipe.Recipe = Recipes.FirstOrDefault(r => r.ItemBaseID == communityRecipe.ItemBaseID);
+                }
+                return _communityRecipes;
+            }
+            set
+            {
+                _communityRecipes = value;
+            }
+        }
+
+        private IDbSet<CommunityPlannedMenuDate> _CommunityPlannedMenuDates = new FakeDBSet<CommunityPlannedMenuDate>();
+        public IDbSet<CommunityPlannedMenuDate> CommunityPlannedMenuDates
+        {
+            get
+            {
+                foreach (var communityPlannedMenuDate in _CommunityPlannedMenuDates.Where(c => c.PlannedMenuDate == null))
+                {
+                    communityPlannedMenuDate.PlannedMenuDate = PlannedMenuDates.FirstOrDefault(pmd => pmd.PlannedMenuDateID == communityPlannedMenuDate.PlannedMenuDateID);
+                }
+                return _CommunityPlannedMenuDates;
+            }
+            set
+            {
+                _CommunityPlannedMenuDates = value;
+            }
+        }
+        private IDbSet<TransferStatus> _siteTransferStatuses = new FakeDBSet<TransferStatus>();
+        public IDbSet<TransferStatus> SiteTransferStatuses { get { return _siteTransferStatuses; } set { _siteTransferStatuses = value; } }
+
+        private IDbSet<SiteTransfer> _siteTransfers = new FakeDBSet<SiteTransfer>();
+        public IDbSet<SiteTransfer> SiteTransfers { get { return _siteTransfers; } set { _siteTransfers = value; } }
+
+        private IDbSet<SiteTransferItem> _siteTransferItems = new FakeDBSet<SiteTransferItem>();
+        public IDbSet<SiteTransferItem> SiteTransferItems { get { return _siteTransferItems; } set { _siteTransferItems = value; } }
+
+        private IDbSet<OrderStatus> _orderStatuses = new FakeDBSet<OrderStatus>();
+        public IDbSet<OrderStatus> OrderStatuses { get { return _orderStatuses; } set { _orderStatuses = value; } }
+
+        private IDbSet<VendorOrder> _vendorOrders = new FakeDBSet<VendorOrder>();
+        public IDbSet<VendorOrder> VendorOrders { get { return _vendorOrders; } set { _vendorOrders = value; } }
+
+        private IDbSet<VendorOrderItem> _vendorOrderItems = new FakeDBSet<VendorOrderItem>();
+        public IDbSet<VendorOrderItem> VendorOrderItems { get { return _vendorOrderItems; } set { _vendorOrderItems = value; } }
+
+        private IDbSet<WarehouseOrder> _warehouseOrders = new FakeDBSet<WarehouseOrder>();
+        public IDbSet<WarehouseOrder> WarehouseOrders { get { return _warehouseOrders; } set { _warehouseOrders = value; } }
+
+        private IDbSet<WarehouseOrderItem> _WarehouseOrderItems = new FakeDBSet<WarehouseOrderItem>();
+        public IDbSet<WarehouseOrderItem> WarehouseOrderItems { get { return _WarehouseOrderItems; } set { _WarehouseOrderItems = value; } }
+
+        private IDbSet<VendorSite> _vendorSites = new FakeDBSet<VendorSite>();
+        public IDbSet<VendorSite> VendorSites { get { return _vendorSites; } set { _vendorSites = value; } }
+
+
+        public IDbSet<UsageReason> UsageReasons { get; set; } = new FakeDBSet<UsageReason>();
+        private IDbSet<DaysofWeek> _dayofWeeks = new FakeDBSet<DaysofWeek>();
+        public IDbSet<DaysofWeek> DayofWeeks { get { return _dayofWeeks; } set { _dayofWeeks = value; } }
+
+        public IDbSet<ImportTemplate> ImportTemplates { get; set; } = new FakeDBSet<ImportTemplate>();
+        public IDbSet<ImportTemplateType> ImportTemplateTypes { get; set; } = new FakeDBSet<ImportTemplateType>();
+        public IDbSet<ImportTemplateTypeField> ImportTemplateTypeFields { get; set; } = new FakeDBSet<ImportTemplateTypeField>();
+        public IDbSet<ImportTemplateImportField> ImportTemplateImportFields { get; set; } = new FakeDBSet<ImportTemplateImportField>();
+        public IDbSet<ReportFavorite> ReportFavoriteList { get; set; } = new FakeDBSet<ReportFavorite>();
+        public IDbSet<ImportTemplateTranslation> ImportTemplateTranslations { get; set; } = new FakeDBSet<ImportTemplateTranslation>();
+        public IDbSet<ImportTemplateTranslationCondition> ImportTemplateTranslationConditions { get; set; } = new FakeDBSet<ImportTemplateTranslationCondition>();
+        public IDbSet<Operator> ImportMappingOperators { get; set; } = new FakeDBSet<Operator>();
+        public IDbSet<ProductGroup> ProductGroups { get; set; } = new FakeDBSet<ProductGroup>();
+        public IDbSet<ProductGroupItem> ProductGroupItems { get; set; } = new FakeDBSet<ProductGroupItem>();
+        public IDbSet<ProductGroupSiteGroupSite> ProductGroupSiteGroupSites { get; set; } = new FakeDBSet<ProductGroupSiteGroupSite>();
+        public IDbSet<ImportTemplateExclusion> ImportTemplateExclusions { get; set; } = new FakeDBSet<ImportTemplateExclusion>();
+        public IDbSet<ImportTemplateExclusionCondition> ImportTemplateExclusionConditions { get; set; } = new FakeDBSet<ImportTemplateExclusionCondition>();
+        public IDbSet<ImportMethod> ImportMethods { get; set; } = new FakeDBSet<ImportMethod>();
+        public IDbSet<FieldDataType> FieldDataTypes { get; set; } = new FakeDBSet<FieldDataType>();
+        public IDbSet<ImportTemplateResult> ImportTemplateResults { get; set; } = new FakeDBSet<ImportTemplateResult>();
+        public IDbSet<ImportTemplateResultDetail> ImportTemplateResultDetails { get; set; } = new FakeDBSet<ImportTemplateResultDetail>();
+        public IDbSet<FulfillmentSource> FulfillmentSources { get; set; } = new FakeDBSet<FulfillmentSource>();
+        public IDbSet<ProductFulfillment> ProductFulfillments { get; set; } = new FakeDBSet<ProductFulfillment>();
+
+        public IDbSet<Requisition> Requisitions { get; set; } = new FakeDBSet<Requisition>();
+        public IDbSet<RequisitionItem> RequisitionItems { get; set; } = new FakeDBSet<RequisitionItem>();
+
+        public IDbSet<CommunityNetwork> CommunityNetworks { get; set; } = new FakeDBSet<CommunityNetwork>();
+
+        //public ObjectResult<Ingredient> SearchIngredients(int? ingredientNumber, string ingredientDescription, int? cnCode, Guid? ingredientClassID,
+        //    string commodityCode, bool? isUSDA, bool? active)
+        //{
+        //    throw new NotImplementedException();
+        //}us
+
+        public IDbSet<BidType> BidTypes { get; set; } = new FakeDBSet<BidType>();
+        public IDbSet<BidStatus> BidStatuses { get; set; } = new FakeDBSet<BidStatus>();
+        public IDbSet<Bid> Bids { get; set; } = new FakeDBSet<Bid>();
+        public IDbSet<BidItem> BidItems { get; set; } = new FakeDBSet<BidItem>();
+        public IDbSet<ScheduleReportSettings> ScheduleReportSettings { get; set; } = new FakeDBSet<ScheduleReportSettings>();
+
+        private IDbSet<OrderExportTemplate> _orderExportTemplates = new FakeDBSet<OrderExportTemplate>();
+        public IDbSet<OrderExportTemplate> OrderExportTemplates { get { return _orderExportTemplates; } set { _orderExportTemplates = value; } }
+
+        private IDbSet<MealViewerGroup> _mealViewerGroups = new FakeDBSet<MealViewerGroup>();
+        public IDbSet<MealViewerGroup> MealViewerGroups { get { return _mealViewerGroups; } set { _mealViewerGroups = value; } }
+
+        private IDbSet<MealViewerEnvironment> _mealViewerEnvironment = new FakeDBSet<MealViewerEnvironment>();
+        public IDbSet<MealViewerEnvironment> MealViewerEnvironment { get { return _mealViewerEnvironment; } set { _mealViewerEnvironment = value; } }
+
+        private IDbSet<MealViewerSyncServingPeriodFilter> _mealViewerSyncServingPeriodFilter = new FakeDBSet<MealViewerSyncServingPeriodFilter>();
+        public IDbSet<MealViewerSyncServingPeriodFilter> MealViewerSyncServingPeriodFilter { get { return _mealViewerSyncServingPeriodFilter; } set { _mealViewerSyncServingPeriodFilter = value; } }
+
+        private IDbSet<Log4netLog> _log4netLog = new FakeDBSet<Log4netLog>();
+        public IDbSet<Log4netLog> Log4netLog { get { return _log4netLog; } set { _log4netLog = value; } }
+
+        public IDbSet<Announcement> Announcements { get; set; }
+        public List<IngredientGridRow> SearchIngredients(int? ingredientNumber, string ingredientDescription, int? cnCode, Guid? ingredientClassID, string commodityCode, bool? isUSDA, bool? active, int resultLimit, Guid? districtID, bool includeNutrientInfo, bool includeAllergens, bool? availableAsCommodity = null, bool? hasLinkedProduct = null, string manufacturer = null, string productNumber = null, string upcCode = null, string linkedProductNumberOrDescription = null)
+        {
+            return new List<IngredientGridRow>();
+        }
+
+        public void CopyPlannedMenuDate(Guid fromPlannedMenuDateID, Guid toPlannedMenuID, DateTime toDate, bool isOverwrite, bool copyMenusOnly = false)
+        {
+
+        }
+
+        public List<ProductionShoppingListReportData> GetProductionShoppingListReportData(List<Guid> plannedMenuIDs,
+            List<Guid> siteIDs,
+            DateTime? starteDate1, DateTime? endDate1,
+            DateTime? starteDate2, DateTime? endDate2,
+            DateTime? starteDate3, DateTime? endDate3,
+            DateTime? starteDate4, DateTime? endDate4,
+            DateTime? starteDate5, DateTime? endDate5)
+
+        {
+            return new List<ProductionShoppingListReportData>();
+        }
+
+        public bool RemoveDeletedUSDAIngredients(Guid cnDistrictID, Guid targetDistrictID)
+        {
+            return true;
+        }
+
+        public int GetNextIngredientNumber(Guid districtID)
+        {
+            return 1;
+        }
+
+        public int GetNextRecipeNumber(Guid districtID)
+        {
+            return 1;
+        }
+
+        public bool SetReadOnly(bool? enableReadOnly)
+        {
+            return false;
+        }
+
+        public IQueryable<T> GetEntitySet<T>(Expression<Func<T, object>>[] includes = null, Expression<Func<T, bool>>[] predicates = null) where T : EntityBase
+        {
+            var set = new FakeDBSet<T>().AsQueryable();
+
+            if (includes != null)
+                set = includes.Aggregate(set, (current, include) => current.Include(include)).AsQueryable();
+
+            if (predicates != null)
+                set = predicates.Aggregate(set, (current, predicate) => current.Where(predicate)).AsQueryable();
+
+            return set;
+        }
+
+        public void Dispose() { }
+
+        public List<PlannedMenuImportItem> GetPlannedMenuImportSearchData(List<Guid> plannedMenuIDs, List<Guid> siteIDs,
+            DateTime? starteDate, DateTime? endDate)
+        {
+            //TODO return meaningful data, for now return an empty list. 
+            return new List<PlannedMenuImportItem>();
+        }
+
+        public List<PlannedMenuImportItem> GetPlannedMenuImportSearchDataForWarehouse(List<Guid> plannedMenuIDs, List<Guid> siteIDs,
+            DateTime? starteDate, DateTime? endDate)
+        {
+            //TODO return meaningful data, for now return an empty list. 
+            return new List<PlannedMenuImportItem>();
+        }
+
+        public List<PlannedMenuRequisitionItem> GetPlannedMenuRequisitionItems(Guid siteID, List<Guid> plannedMenuDateIDs)
+        {
+            //TODO return meaningful data, for now return an empty list. 
+            return new List<PlannedMenuRequisitionItem>();
+        }
+
+        public List<PlannedMenuUsageItem> GetPlannedMenuUsageItems(Guid siteID, List<Guid> plannedMenuDateIDs)
+        {
+            //TODO return meaningful data, for now return an empty list. 
+            return new List<PlannedMenuUsageItem>();
+        }
+
+        public List<PlannedMenuUsageItem> GetPlannedMenuUsageItemsByPlannedNumbers(Guid siteID, List<Guid> plannedMenuDateIDs)
+        {
+            //TODO return meaningful data, for now return an empty list. 
+            return new List<PlannedMenuUsageItem>();
+        }
+
+        public List<PlannedMenuUsageItem> GetPlannedMenuUsageItemsByServedNumbers(Guid siteID, List<Guid> plannedMenuDateIDs)
+        {
+            //TODO return meaningful data, for now return an empty list. 
+            return new List<PlannedMenuUsageItem>();
+        }
+        
+        public int CommitPhysicalCounts(Guid siteID, Guid physicalCountID, bool allowNegative, bool allowInactiveItems, bool allowPartialStockUnitInventory, DateTime clientToday)
+        {
+            //TODO return meaningful data, for now return zero, which means no invalid partial stock units. 
+            return 0;
+        }
+
+        public void ResetMealViewerSyncFlags(Guid districtID)
+        {
+            //TODO return a meaningful void of nothing.
+        }
+    }
+}

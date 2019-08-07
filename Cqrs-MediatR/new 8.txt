@@ -1,0 +1,6 @@
+namespace Boss.Domain.Core
+{
+    public class CoreBoundaryIdentifier : BoundaryContextIdentifier
+    {
+    }
+}

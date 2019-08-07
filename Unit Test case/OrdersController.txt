@@ -1,0 +1,1001 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ServiceModel;
+using System.Web.Mvc;
+using Kendo.Mvc.Extensions;
+using Kendo.Mvc.UI;
+using MosaicBOH.Business.Entities;
+using MosaicBOH.Business.Entities.DTO;
+using MosaicBOH.Business.Interfaces.FaultContracts;
+using MosaicBOH.Common;
+using MosaicBOH.Web.Areas.Ordering.Models;
+using MosaicBOH.Web.Custom;
+using System.Linq;
+using MosaicBOH.Web.Extensions;
+using System.Web;
+
+namespace MosaicBOH.Web.Areas.Ordering.Controllers
+{
+    public class OrdersController : BaseController
+    {
+        #region Vendor Orders
+
+        #region Vendor Order Search
+
+        private const string ControllerStateKey = "OrdersControllerState";
+        private static readonly string ControllerStateKeyTemp = $"tmp{ControllerStateKey}";
+        private VendorOrderSearchViewModel GetDefaultSearchViewModel()
+        {
+            return new VendorOrderSearchViewModel
+            {
+                OrderNumber = null,
+                SiteID = null,
+                VendorID = null,
+                OrderStatusID = null,
+                EnteredByUserID = null,
+                ApprovedByUserID = null,
+                DeliveryStartDate = null,
+                DeliveryEndDate = null,
+                ApprovalStartDate = null,
+                ApprovalEndDate = null,
+                SearchResults = new List<VendorOrder>()
+            };
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrder)]
+        [HttpGet]
+        public ActionResult VendorOrderSearch(int? requisitionNumber)
+        {
+            var model = Session[ControllerStateKey] as VendorOrderSearchViewModel;
+            Session[ControllerStateKey] = null;
+            Session[ControllerStateKeyTemp] = model;
+
+            if (model == null)
+            {
+                model = GetDefaultSearchViewModel();
+                model.RequisitionNumber = requisitionNumber;
+            }
+            return View(model);
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrder)]
+        public ActionResult ResetSearch()
+        {
+            Session[ControllerStateKey] = null;
+            Session[ControllerStateKeyTemp] = GetDefaultSearchViewModel();
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrder)]
+        [DataSourceAuthorization]
+        public ActionResult VendorOrdersQuery([DataSourceRequest] DataSourceRequest request, VendorOrderSearchViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    var qry = new VendorOrderQuery
+                    {
+                        OrderNumber = model.OrderNumber,
+                        SiteID = model.SiteID,
+                        VendorID = model.VendorID,
+                        OrderStatusID = model.OrderStatusID,
+                        EnteredByUserID = model.EnteredByUserID,
+                        ApprovedByUserID = model.ApprovedByUserID,
+                        DeliveryStartDate = model.DeliveryStartDate,
+                        DeliveryEndDate = model.DeliveryEndDate,
+                        ApprovalStartDate = model.ApprovalStartDate,
+                        ApprovalEndDate = model.ApprovalEndDate,
+                        RequisitionNumber = model.RequisitionNumber,
+                        PageSize = model.ResultMaxRecords
+                    };
+
+                    var result = MenuPlanning.SearchVendorOrders(qry);
+                    if (result.Results.Count == 0)
+                    {
+                        result = EmptyPagedResult<VendorOrder>();
+                    }
+
+                    model.SearchResults = result.Results;
+
+                    //normalize data for display
+                    for (int i = 0; i < model.SearchResults.Count(); i++)
+                    {
+                        if (model.SearchResults[i].Receiving == null)
+                        {
+                            model.SearchResults[i].Receiving = new Receiving();
+                        }
+                        if (model.SearchResults[i].ApprovedByUser == null)
+                        {
+                            model.SearchResults[i].ApprovedByUser = new User();
+                        }
+                        if (model.SearchResults[i].Requisition == null)
+                        {
+                            model.SearchResults[i].Requisition = new Requisition();
+                        }
+                    }
+
+                    Session[ControllerStateKeyTemp] = model;
+                }
+                catch (FaultException<ServerErrorFault> err)
+                {
+                    ModelState.AddModelError(string.Empty, err.Detail.ErrorMessage);
+                    model.SearchResults = new List<VendorOrder>();
+                }
+            }
+
+            return Json(model.SearchResults.ToDataSourceResult(request));
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrder)]
+        public ActionResult GetVendorsWhoHaveVendorOrders(Guid? siteID = null)
+        {
+            var results = MenuPlanning.GetVendorsWhoHaveVendorOrders(siteID, true)
+                .Select(s => new { s.VendorID, s.VendorName });
+
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrder)]
+        public ActionResult GetUsersWhoHaveEnteredVendorOrders(Guid? siteID = null)
+        {
+            var results = MenuPlanning.GetUsersWhoHaveEnteredVendorOrders(siteID, true)
+                .Select(s => new { s.UserID, s.Name });
+
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrder)]
+        public ActionResult GetUsersWhoHaveApprovedVendorOrders(Guid? siteID = null)
+        {
+            var results = MenuPlanning.GetUsersWhoHaveApprovedVendorOrders(siteID, true)
+                .Select(s => new { s.UserID, s.Name });
+
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+        #endregion Vendor Order Search
+
+        #region Vendor Order Edit (Get)
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrder)]
+        public ActionResult VendorOrderEdit(Guid? id)
+        {
+            if (id == Guid.Empty && !User.IsInRole(Constants.Roles.Ordering.VendorOrderAdd))
+            {
+                return new HttpUnauthorizedResult();
+            }
+
+            VendorOrder model;
+            var commitFailed = !id.HasValue;
+
+            if (commitFailed)
+            {
+                model = (VendorOrder)TempData["passedModel"];
+                ModelState.AddModelError(string.Empty, TempData["modelError"].ToString());
+                TempData.Remove("passedModel");
+                TempData.Remove("modelError");
+            }
+            else
+            {
+                //check whether this is Back order (from Receiving screen).
+                if (TempData.ContainsKey("passedModel"))
+                {
+                    //Back Order
+                    model = (VendorOrder)TempData["passedModel"];
+                    TempData.Remove("passedModel");
+                    //need Vendor in case vendor has been deactivated
+                    model.Vendor = MenuPlanning.GetVendorByID(model.VendorID);
+                }
+                else
+                {
+                    model = id != Guid.Empty ? MenuPlanning.GetVendorOrderByID((Guid)id) : new VendorOrder
+                    {
+                        VendorOrderID = Guid.Empty,
+                        DistrictID = CurrentDistrictID,
+                        SiteID = Guid.Empty,
+                        VendorID = Guid.Empty,
+                        OrderStatusID = Guid.Empty,
+                        ReceivingID = null,
+                        EnteredByUserID = CurrentUserID,
+                        ApprovedByUserID = null,
+                        OrderNumber = 0,
+                        DeliveryDate = null,
+                        ApprovedDate = null,
+                        Comment = null,
+                        OrderTotal = 0,
+                        VendorOrderEntries = new List<VendorOrderEntry>()
+                    };
+                }
+            }
+
+            var itemQuery = new ProductItemQuery
+            {
+                ItemNumber = null,
+                Brand = string.Empty,
+                SiteID = model.SiteID != Guid.Empty ? model.SiteID : (Guid?)null,
+                VendorID = model.VendorID != Guid.Empty ? model.VendorID : (Guid?)null,
+                UserID = CurrentUserID,
+                ProductNumber = string.Empty,
+                VendorItemNumber = string.Empty,
+                PageIndex = 0,
+                PageSize = 3000,
+                ProductNumberOrDescription = string.Empty
+            };
+
+            var clientDate = GetClientDateTime().Date;
+
+            var items = MenuPlanning.SearchVendorOrderProductItems(itemQuery, clientDate);
+            // cleanup data after a failed commit
+            if (commitFailed)
+            {
+                model.VendorOrderEntries.ForEach(entry =>
+                {
+                    var item = items.Find(p => p.ItemID == entry.ItemID);
+                    entry.ItemNumber = item.ItemNumber;
+                    entry.ProductID = item.ProductID;
+                    entry.ProductNumber = item.ProductNumber;
+                    entry.VendorItemNumber = item.VendorItemNumber;
+
+                    entry.VendorOrderID = Guid.Empty;
+                    entry.VendorOrderItemID = Guid.Empty;
+                });
+            }
+
+            ViewData["ItemList"] = items;
+
+            var productGroupQuery = new ProductGroupQuery
+            {                
+                SiteID = model.SiteID != Guid.Empty ? model.SiteID : (Guid?)null,                               
+                PageIndex = 0,
+                PageSize = 3000,                
+            };
+            var productGroups = MenuPlanning.GetProductGroups(productGroupQuery);
+
+            ViewData["ProductGroupList"] = productGroups;
+            ViewBag.ExportVendorOrderPriorApproval = ExportVendorOrderPriorApproval;
+
+            return View(model);
+        }
+
+        #endregion Vendor Order Edit (Get)
+
+        #region RefreshItemList
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrderEdit)]
+        [DataSourceAuthorization]
+        public JsonResult RefreshItemList([DataSourceRequest] DataSourceRequest request, VendorOrder model)
+        {
+            var itemQuery = new ProductItemQuery
+            {
+                ItemNumber = null,
+                Brand = string.Empty,
+                SiteID = model.SiteID,
+                VendorID = model.VendorID,
+                ProductNumber = string.Empty,
+                VendorItemNumber = string.Empty,
+                PageIndex = 0,
+                PageSize = 3000,
+                ProductNumberOrDescription = string.Empty
+            };
+
+            var clientDate = GetClientDateTime().Date;
+
+            var data = new { items = MenuPlanning.SearchVendorOrderProductItems(itemQuery, clientDate) };
+
+            return Json(data, JsonRequestBehavior.AllowGet);
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrderEdit)]
+        [DataSourceAuthorization]
+        public JsonResult RefreshProductGroupList([DataSourceRequest] DataSourceRequest request, VendorOrder model)
+        {
+            var productGroupQuery = new ProductGroupQuery
+            {
+                SiteID = model.SiteID != Guid.Empty ? model.SiteID : (Guid?)null,
+                PageIndex = 0,
+                PageSize = 3000,
+            };
+            var data = new { productGroups = MenuPlanning.GetProductGroups(productGroupQuery) };
+
+            return Json(data, JsonRequestBehavior.AllowGet);
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrderEdit)]
+        [DataSourceAuthorization]
+        public JsonResult RefreshItemListByProductGroup([DataSourceRequest] DataSourceRequest request, Guid productGroupID, VendorOrder model)
+        {
+            var itemQuery = new ProductItemQuery
+            {
+                ItemNumber = null,
+                Brand = string.Empty,
+                SiteID = model.SiteID,
+                VendorID = model.VendorID,
+                ProductNumber = string.Empty,
+                VendorItemNumber = string.Empty,
+                PageIndex = 0,
+                PageSize = 3000,
+                ProductNumberOrDescription = string.Empty
+            };
+            var clientDate = GetClientDateTime().Date;
+            var itemList = MenuPlanning.SearchVendorOrderProductItemsByProductGroupID(productGroupID, itemQuery, clientDate);
+            return Json(itemList, JsonRequestBehavior.AllowGet);
+        }
+
+        #endregion
+
+        #region VendorOrderEditSaveSubmitApproveReject
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrderEdit)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [SessionStateBehaviorRequired]
+        public ActionResult VendorOrderEditSaveSubmitApproveReject(VendorOrder model, FormCollection formCollection)
+        {
+            ModelState.Clear();
+            var submitAction = formCollection["SubmitAction"];
+            bool exportVendorOrder = string.IsNullOrEmpty(formCollection["ExportVendorOrder"]) ? false : bool.Parse(formCollection["ExportVendorOrder"]);
+            var isNewVendorOrderEntry = model.VendorOrderID == Guid.Empty;
+
+            if (model.VendorOrderID == Guid.Empty && !User.IsInRole(Constants.Roles.Ordering.VendorOrderAdd))
+                return new HttpUnauthorizedResult();
+
+            var vendorOrderItems = new CustomJsonConvert(Session.GetCurrentOlsonTimeZoneID()).DeserializeObject<List<VendorOrderEntry>>(formCollection["vendorOrderItems"]);
+            var sortOrder = 0;
+            if(submitAction  == "Approve" || submitAction == "Submit")
+                vendorOrderItems = vendorOrderItems.Where(x => x.PurchaseUnitCount > 0).ToList();
+
+            foreach (var item in vendorOrderItems)
+            {
+                sortOrder++;
+                item.SortOrder = sortOrder;
+            }
+            model.VendorOrderEntries = vendorOrderItems;
+
+            if (model.SiteID == Guid.Empty && formCollection["HiddenSiteID"] != null) //a disabled dropdown does not POST a value
+                model.SiteID = new Guid(formCollection["HiddenSiteID"]);
+
+            if (model.VendorID == Guid.Empty && formCollection["HiddenVendorID"] != null) //a disabled dropdown does not POST a value
+                model.VendorID = new Guid(formCollection["HiddenVendorID"]);
+            
+            if (model.Site == null && model.SiteID != null && model.SiteID != Guid.Empty)
+                model.Site = MenuPlanning.GetSiteByID(model.SiteID);
+
+            if (model.Vendor == null && model.VendorID != null && model.VendorID != Guid.Empty)
+                model.Vendor = MenuPlanning.GetVendorByID(model.VendorID);
+            
+            var clientDate = GetClientDateTime();
+            try
+            {
+                MenuPlanning.SaveOrUpdateVendorOrder(model, submitAction, clientDate);
+                ModelState.Clear();
+                switch (submitAction)
+                {
+                    case "Save":
+                        SetNotification(Resources.Ordering.VendorOrder.SavedSuccessfully);
+                        break;
+                    case "Submit":
+                        SetNotification(Resources.Ordering.VendorOrder.SubmittedSuccessfully);
+                        break;
+                    case "Approve":
+                        SetNotification(Resources.Ordering.VendorOrder.ApprovedSuccessfully);
+                        break;
+                    case "Reject":
+                        SetNotification(Resources.Ordering.VendorOrder.RejectedSuccessfully);
+                        break;
+                    case "Revert":
+                        SetNotification(Resources.Ordering.VendorOrder.RevertedSuccessfully);
+                        break;
+                }
+                
+                if (exportVendorOrder)
+                {
+                    var exportNotification = submitAction == "Submit" ? Resources.Ordering.VendorOrder.SubmittedExportedSuccessfully : Resources.Ordering.VendorOrder.ApprovedExportedSuccessfully;
+                    SetNotification(exportNotification);
+                    return Json(model);
+                }
+              
+                return RedirectToAction("VendorOrderSearch");
+                
+            }
+            catch (Exception ex)
+            {
+                // cleanup data after a failed commit
+                if (isNewVendorOrderEntry)
+                    model.VendorOrderID = Guid.Empty;
+                TempData["modelError"] = ex.InnermostMessage();
+            }
+
+            switch (submitAction)
+            {
+                case "Save":
+                    SetNotification(Resources.Ordering.VendorOrder.SaveFailed);
+                    break;
+                case "Submit":
+                    SetNotification(Resources.Ordering.VendorOrder.SubmissionFailed);
+                    break;
+                case "Approve":
+                    SetNotification(Resources.Ordering.VendorOrder.ApprovalFailed);
+                    break;
+                case "Reject":
+                    SetNotification(Resources.Ordering.VendorOrder.RejectionFailed);
+                    break;
+                case "Revert":
+                    SetNotification(Resources.Ordering.VendorOrder.RevertFailed);
+                    break;
+            }
+
+            TempData["passedModel"] = model;
+
+            return RedirectToAction("VendorOrderEdit");
+        }
+
+        #endregion
+
+        #region Delete
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrderDelete)]
+        [ValidateAntiForgeryToken(Order = 2)]
+        [DataSourceAuthorization]
+        [HttpPost]
+        [SessionStateBehaviorRequired]
+        public ActionResult Delete(Guid vendorOrderID)
+        {
+            ModelState.Clear();
+            try
+            {
+                MenuPlanning.DeleteVendorOrder(vendorOrderID);
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = string.Format(Resources.Ordering.VendorOrder.DeleteFailedWithMessage, ex.Message);
+                return Json(new { Result = errorMessage, Success = false });
+            }
+
+            SetNotification(Resources.Ordering.VendorOrder.DeletedSuccessfully);
+            return Json(new { Result = "Success", Success = true });
+        }
+
+        #endregion
+
+        #region Cancel
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrder)]
+        public ActionResult VendorOrderEditCancel()
+        {
+            Session[ControllerStateKey] = Session[ControllerStateKeyTemp];
+            return RedirectToAction("VendorOrderSearch");
+        }
+
+        #endregion
+
+        [HttpPost]
+        [DataSourceAuthorization]
+        public ActionResult CheckDeliveryScheduleLeadTimeMinmumOrderAmount([DataSourceRequest] DataSourceRequest request, Guid siteID, Guid vendorID, string deliveryDate, decimal orderTotal)
+        {
+            bool inSchedule;
+            var donnotNeedMoreTime = true;
+            var meetMinOrderAmount = true;
+            var clientToday = GetClientDateTime().Date;
+            Vendor vendor;
+            var errorType = "Schedule";
+            var errorCount = 0;
+            var deliveryDateWeekDay = DateTime.Parse(deliveryDate);
+            var leadTimeString="";
+            var minOrderAmountString = "";
+            try
+            {
+                inSchedule = MenuPlanning.IsDeliveryDateinSchedule(siteID, vendorID, (int)deliveryDateWeekDay.DayOfWeek);
+                if (!inSchedule)
+                    errorCount++;
+                vendor = MenuPlanning.GetVendorByID(vendorID);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { Result = ex.Message, Success = false });
+            }
+            var leadTime = vendor?.DeliveryLeadTime;
+            if (leadTime != null && leadTime != 0)
+            {
+                donnotNeedMoreTime = AddBusinessDays(clientToday, leadTime.Value) < deliveryDateWeekDay;
+                if (!donnotNeedMoreTime)
+                {
+                    errorType = inSchedule?"Leadtime":errorType;
+                    errorCount++;
+                    leadTimeString = leadTime.ToString();
+                }
+            }
+            var minimumOrderAmount = vendor?.MinimumOrderAmount;
+            if (minimumOrderAmount != null && minimumOrderAmount != 0)
+            {
+                if (orderTotal < minimumOrderAmount.Value)
+                {
+                    meetMinOrderAmount = false;
+                    errorType = inSchedule && donnotNeedMoreTime ? "MinimumOrderAmount" : errorType;
+                    errorCount++;
+                    minOrderAmountString = minimumOrderAmount.ToString();
+                }
+            }
+            return Json(new { Result = (inSchedule && donnotNeedMoreTime && meetMinOrderAmount).ToString(), Success = true, ErrorCount =errorCount, ErrorType= errorType, DeliveryDateWeekDay = deliveryDateWeekDay.ToString("dddd") + "s", LeadTime = leadTimeString, MinOrderAmount= minOrderAmountString });
+        }
+
+        [HttpGet]
+        public ActionResult Download(Guid vendorID, string productOrderNo, Guid vendorOrderID)
+        {
+
+            var vendor = MenuPlanning.GetExportTemplateByVendorID(vendorID);
+
+            var filebytes = MenuPlanning.CreateOrderExportDataForFile(vendorID, productOrderNo, vendorOrderID);
+            
+            string filename = "PO_" + productOrderNo + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + vendor.FileFormat;
+
+            if(vendor.TemplateName == Constants.VendorOrderExportTemplateTypes.Names.GordonGlazier)
+                filename = "PO_" + productOrderNo + "_"+ CurrentDistrictID + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + vendor.FileFormat;
+            if (vendor.TemplateName == Constants.VendorOrderExportTemplateTypes.Names.SyscoPoe)
+            {
+                var orderData = MenuPlanning.GetVendorOrderExportData(vendorID, vendorOrderID);
+                filename = orderData.Select(x => x.DistrictCustomerNumber).FirstOrDefault() + "." + productOrderNo + vendor.FileFormat;
+            }
+            string contentType = MimeMapping.GetMimeMapping(filename);
+            
+            var fileContent = new System.Net.Mime.ContentDisposition
+            {
+                FileName = filename,
+                Inline = false,
+            };
+
+            Response.AppendHeader("Content-Disposition", fileContent.ToString());
+
+            return File(filebytes, contentType, filename);
+        }
+
+        #endregion Vendor Orders
+
+        #region Warehouse Orders
+        
+        #region Warehouse Order Search
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        public ActionResult GetWarehouseWhoHaveWarehouseOrders(Guid? siteID = null)
+        {
+            var results = MenuPlanning.GetWarehouseWhoHaveWarehouseOrders(siteID, true)
+                .Select(s => new { s.SiteID, s.SiteName });
+
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        public ActionResult GetUsersWhoHaveEnteredWarehouseOrders(Guid? siteID = null)
+        {
+            var results = MenuPlanning.GetUsersWhoHaveEnteredWarehouseOrders(siteID, true)
+                .Select(s => new { s.UserID, s.Name });
+
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+
+        private WarehouseOrderSearchViewModel GetDefaultWarehouseSearchViewModel()
+        {
+            return new WarehouseOrderSearchViewModel
+            {
+                OrderNumber = null,
+                SiteID = null,
+                WarehouseID = null,
+                OrderStatusID = null,
+                EnteredByUserID = null,
+                ApprovedByUserID = null,
+                DeliveryStartDate = null,
+                DeliveryEndDate = null,
+                ApprovalStartDate = null,
+                ApprovalEndDate = null,
+                SearchResults = new List<WarehouseOrder>()
+            };
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        [HttpGet]
+        public ActionResult WarehouseOrderSearch(int? requisitionNumber)
+        {
+            var model = Session[ControllerStateKey] as WarehouseOrderSearchViewModel;
+            Session[ControllerStateKey] = null;
+            Session[ControllerStateKeyTemp] = model;
+
+            if (model == null)
+            {
+                model = GetDefaultWarehouseSearchViewModel();
+                model.RequisitionNumber = requisitionNumber;
+            }
+            return View(model);
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        public ActionResult WarehouseResetSearch()
+        {
+            Session[ControllerStateKey] = null;
+            Session[ControllerStateKeyTemp] = GetDefaultWarehouseSearchViewModel();
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        [DataSourceAuthorization]
+        public ActionResult WarehouseOrdersQuery([DataSourceRequest] DataSourceRequest request, WarehouseOrderSearchViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    var qry = new WarehouseOrderQuery
+                    {
+                        OrderNumber = model.OrderNumber,
+                        SiteID = model.SiteID,
+                        WarehouseID = model.WarehouseID,
+                        OrderStatusID = model.OrderStatusID,
+                        EnteredByUserID = model.EnteredByUserID,
+                        ApprovedByUserID = model.ApprovedByUserID,
+                        DeliveryStartDate = model.DeliveryStartDate,
+                        DeliveryEndDate = model.DeliveryEndDate,
+                        ApprovalStartDate = model.ApprovalStartDate,
+                        ApprovalEndDate = model.ApprovalEndDate,
+                        RequisitionNumber = model.RequisitionNumber,
+                        PageSize = model.ResultMaxRecords
+                    };
+
+                    var result = MenuPlanning.SearchWarehouseOrders(qry);
+                    if (result.Results.Count == 0)
+                    {
+                        result = EmptyPagedResult<WarehouseOrder>();
+                    }
+
+                    model.SearchResults = result.Results;
+
+                    //normalize data for display
+                    for (int i = 0; i < model.SearchResults.Count(); i++)
+                    {
+                        if (model.SearchResults[i].Transfer == null)
+                        {
+                            model.SearchResults[i].Transfer = new SiteTransfer();
+                        }
+                        if (model.SearchResults[i].ApprovedByUser == null)
+                        {
+                            model.SearchResults[i].ApprovedByUser = new User();
+                        }
+                        if (model.SearchResults[i].Requisition == null)
+                        {
+                            model.SearchResults[i].Requisition = new Requisition();
+                        }
+                    }
+
+                    Session[ControllerStateKeyTemp] = model;
+                }
+                catch (FaultException<ServerErrorFault> err)
+                {
+                    ModelState.AddModelError(string.Empty, err.Detail.ErrorMessage);
+                    model.SearchResults = new List<WarehouseOrder>();
+                }
+            }
+
+            return Json(model.SearchResults.ToDataSourceResult(request));
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        public ActionResult GetUsersWhoHaveApprovedWarehouseOrders(Guid? siteID = null)
+        {
+            var results = MenuPlanning.GetUsersWhoHaveApprovedWarehouseOrders(siteID, true)
+                .Select(s => new { s.UserID, s.Name });
+
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+
+        #endregion Warehouse Order Search        
+
+        #region Warehouse Order Edit (Get)
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        public ActionResult GetWarehouseSites()
+        {
+            var results = MenuPlanning.GetWarehouseSites()
+                .Select(s => new { s.SiteID, s.SiteName });
+
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        public ActionResult WarehouseOrderEdit(Guid? id)
+        {
+            if (id == Guid.Empty && !User.IsInRole(Constants.Roles.Ordering.WarehouseOrderEdit))
+            {
+                return new HttpUnauthorizedResult();
+            }
+
+            WarehouseOrder model;
+            var commitFailed = !id.HasValue;
+
+            if (commitFailed)
+            {
+                model = (WarehouseOrder) TempData["passedModel"];
+                ModelState.AddModelError(string.Empty, TempData["modelError"].ToString());
+                TempData.Remove("passedModel");
+                TempData.Remove("modelError");
+            }
+            else
+            {
+                model = id != Guid.Empty
+                    ? MenuPlanning.GetWarehouseOrderByID((Guid) id)
+                    : new WarehouseOrder
+                    {
+                        WarehouseOrderID = Guid.Empty,
+                        DistrictID = CurrentDistrictID,
+                        SiteID = Guid.Empty,
+                        WarehouseID = Guid.Empty,
+                        OrderStatusID = Guid.Empty,
+                        SiteTransferID = null,
+                        EnteredByUserID = CurrentUserID,
+                        ApprovedByUserID = null,
+                        OrderNumber = 0,
+                        DeliveryDate = null,
+                        ApprovedDate = null,
+                        Comment = null,
+                        OrderTotal = 0,
+                        WarehouseOrderEntries = new List<WarehouseOrderEntry>()
+                    };
+            }
+
+            var itemQuery = new ProductItemQuery
+            {
+                ItemNumber = null,
+                Brand = string.Empty,
+                SiteID = model.SiteID != Guid.Empty ? model.SiteID : (Guid?)null,
+                ToSiteID = model.WarehouseID != Guid.Empty ? model.WarehouseID : (Guid?)null,
+                UserID = CurrentUserID,
+                ProductNumber = string.Empty,
+                PageIndex = 0,
+                PageSize = 3000,
+                ProductNumberOrDescription = string.Empty
+            };
+
+            var clientDate = GetClientDateTime().Date;
+
+            
+            // cleanup data after a failed commit
+            if (commitFailed)
+            {
+                model.WarehouseOrderEntries.ForEach(entry =>
+                {
+                    var item = MenuPlanning.GetItemByID(entry.ItemID);
+                    var product = MenuPlanning.GetProductByItemID(entry.ItemID);
+                    entry.ItemNumber = item.ItemNumber;
+                    entry.ProductID = item.ProductID;
+                    entry.ProductNumber = product.ProductNumber;
+                    //entry.WarehouseItemNumber = item.WarehouseItemNumber;
+
+                    entry.WarehouseOrderID = Guid.Empty;
+                    entry.WarehouseOrderItemID = Guid.Empty;
+                });
+            }
+
+            if (model.OrderStatusID != Constants.OrderStatus.ID.Rejected &&
+                model.OrderStatusID != Constants.OrderStatus.ID.Approved)
+            {
+                var items = MenuPlanning.SearchWarehouseOrderProductItems(itemQuery, clientDate);
+                ViewData["ItemList"] = items;
+
+                var productGroupQuery = new ProductGroupQuery
+                {
+                    SiteID = model.SiteID != Guid.Empty ? model.SiteID : (Guid?) null,
+                    PageIndex = 0,
+                    PageSize = 3000,
+                };
+                var productGroups = MenuPlanning.GetProductGroups(productGroupQuery);
+
+                ViewData["ProductGroupList"] = productGroups;
+            }
+
+            if (model.OrderStatusID != Constants.OrderStatus.ID.Approved)
+            {
+                ViewBag.AllowWarehouseOrderInStockUnit = AllowWarehouseOrderInStockUnit;
+                ViewBag.AllowPartialStockUnit = AllowPartialStockUnit;
+
+                if (!ViewBag.AllowWarehouseOrderInStockUnit)
+                {
+                    model.WarehouseOrderEntries.ForEach(entry => {
+                        entry.ItemTotalAmount = entry.PurchaseUnitCount.GetValueOrDefault() * entry.PurchaseUnitPrice;
+                    });
+                }
+            }                      
+            
+            return View(model);
+        }
+
+        #endregion Warehouse Order Edit (Get)        
+
+        #region RefreshItemList
+
+        [Authorize(Roles = Constants.Roles.Ordering.VendorOrderEdit)]
+        [DataSourceAuthorization]
+        public JsonResult RefreshItemListForWarehouse([DataSourceRequest] DataSourceRequest request, WarehouseOrder model)
+        {
+            var itemQuery = new ProductItemQuery
+            {
+                ItemNumber = null,
+                Brand = string.Empty,
+                SiteID = model.SiteID,
+                ToSiteID = model.WarehouseID,
+                ProductNumber = string.Empty,
+                PageIndex = 0,
+                PageSize = 3000,
+                ProductNumberOrDescription = string.Empty
+            };
+
+            var clientDate = GetClientDateTime().Date;
+
+            var data = new { items = MenuPlanning.SearchWarehouseOrderProductItems(itemQuery, clientDate) };
+
+            return Json(data, JsonRequestBehavior.AllowGet);
+        }
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrderEdit)]
+        [DataSourceAuthorization]
+        public JsonResult RefreshItemListForWarehouseByProductGroup([DataSourceRequest] DataSourceRequest request, Guid productGroupID, WarehouseOrder model)
+        {
+            var itemQuery = new ProductItemQuery
+            {
+                ItemNumber = null,
+                Brand = string.Empty,
+                SiteID = model.SiteID,
+                ToSiteID = model.WarehouseID,
+                ProductNumber = string.Empty,
+                PageIndex = 0,
+                PageSize = 3000,
+                ProductNumberOrDescription = string.Empty
+            };
+            var clientDate = GetClientDateTime().Date;
+            var itemList = MenuPlanning.SearchWarehouseOrderProductItemsByProductGroupID(productGroupID, itemQuery, clientDate);
+            return Json(itemList, JsonRequestBehavior.AllowGet);
+        }
+
+        #endregion
+
+        #region WarehouseOrderEditSaveSubmitApproveReject
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrderEdit)]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [SessionStateBehaviorRequired]
+        public ActionResult WarehouseOrderEditSaveSubmitApproveReject(WarehouseOrder model, FormCollection formCollection)
+        {
+            ModelState.Clear();
+            var submitAction = formCollection["SubmitAction"];
+            var isNewWarehouseOrderEntry = model.WarehouseOrderID == Guid.Empty;
+
+            if (model.WarehouseOrderID == Guid.Empty && !User.IsInRole(Constants.Roles.Ordering.WarehouseOrderAdd))
+                return new HttpUnauthorizedResult();
+
+            var warehouseOrderItems = new CustomJsonConvert(Session.GetCurrentOlsonTimeZoneID()).DeserializeObject<List<WarehouseOrderEntry>>(formCollection["warehouseOrderItems"]);            
+            model.WarehouseOrderEntries = warehouseOrderItems;
+
+            if (model.SiteID == Guid.Empty && formCollection["HiddenSiteID"] != null) //a disabled dropdown does not POST a value
+                model.SiteID = new Guid(formCollection["HiddenSiteID"]);
+
+            if (model.WarehouseID == Guid.Empty && formCollection["HiddenWarehouseID"] != null) //a disabled dropdown does not POST a value
+                model.WarehouseID = new Guid(formCollection["HiddenWarehouseID"]);
+
+            if (model.Site == null && model.SiteID != null && model.SiteID != Guid.Empty)
+                model.Site = MenuPlanning.GetSiteByID(model.SiteID);
+
+            if (model.Warehouse == null && model.WarehouseID != null && model.WarehouseID != Guid.Empty)
+                model.Warehouse = MenuPlanning.GetSiteByID(model.WarehouseID);
+
+            var clientDate = GetClientDateTime();
+            try
+            {                
+                MenuPlanning.SaveOrUpdateWarehouseOrder(model, submitAction, clientDate);
+                ModelState.Clear();
+                switch (submitAction)
+                {
+                    case "Save":
+                        SetNotification(Resources.Ordering.WarehouseOrder.SavedSuccessfully);
+                        break;
+                    case "Submit":
+                        SetNotification(Resources.Ordering.WarehouseOrder.SubmittedSuccessfully);
+                        break;
+                    case "Approve":
+                        SetNotification(Resources.Ordering.WarehouseOrder.ApprovedSuccessfully);
+                        break;
+                    case "Reject":
+                        SetNotification(Resources.Ordering.WarehouseOrder.RejectedSuccessfully);
+                        break;
+                    case "Revert":
+                        SetNotification(Resources.Ordering.WarehouseOrder.RevertedSuccessfully);
+                        break;
+                }
+
+
+                return RedirectToAction("WarehouseOrderSearch");
+
+            }
+            catch (Exception ex)
+            {
+                // cleanup data after a failed commit
+                if (isNewWarehouseOrderEntry)
+                    model.WarehouseOrderID = Guid.Empty;
+                TempData["modelError"] = ex.InnermostMessage();
+            }
+
+            switch (submitAction)
+            {
+                case "Save":
+                    SetNotification(Resources.Ordering.WarehouseOrder.SaveFailed);
+                    break;
+                case "Submit":
+                    SetNotification(Resources.Ordering.WarehouseOrder.SubmissionFailed);
+                    break;
+                case "Approve":
+                    SetNotification(Resources.Ordering.WarehouseOrder.ApprovalFailed);
+                    break;
+                case "Reject":
+                    SetNotification(Resources.Ordering.WarehouseOrder.RejectionFailed);
+                    break;
+                case "Revert":
+                    SetNotification(Resources.Ordering.WarehouseOrder.RevertFailed);
+                    break;
+            }
+
+            TempData["passedModel"] = model;
+
+            return RedirectToAction("WarehouseOrderEdit");
+        }
+
+        #endregion
+
+        #region Delete
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrderDelete)]
+        [ValidateAntiForgeryToken(Order = 2)]
+        [DataSourceAuthorization]
+        [HttpPost]
+        [SessionStateBehaviorRequired]
+        public ActionResult DeleteWarehouse(Guid WarehouseOrderID)
+        {
+            ModelState.Clear();
+            try
+            {
+                MenuPlanning.DeleteWarehouseOrder(WarehouseOrderID);
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = string.Format(Resources.Ordering.WarehouseOrder.DeleteFailedWithMessage, ex.Message);
+                return Json(new { Result = errorMessage, Success = false });
+            }
+
+            SetNotification(Resources.Ordering.WarehouseOrder.DeletedSuccessfully);
+            return Json(new { Result = "Success", Success = true });
+        }
+
+        #endregion
+
+        #region Cancel
+
+        [Authorize(Roles = Constants.Roles.Ordering.WarehouseOrder)]
+        public ActionResult WarehouseOrderEditCancel()
+        {
+            Session[ControllerStateKey] = Session[ControllerStateKeyTemp];
+            return RedirectToAction("WarehouseOrderSearch");
+        }
+
+        #endregion        
+
+        #endregion Warehouse Orders
+
+        [HttpGet]
+        public JsonResult IsOrderExportTemplateAvailable(Guid vendorID)
+        {
+            var vendor = MenuPlanning.GetVendorByID(vendorID);
+            return Json(vendor.OrderExportTemplateID != null, JsonRequestBehavior.AllowGet);
+        }
+
+    }
+}

@@ -1,0 +1,60 @@
+﻿using System;
+using System.Security.Principal;
+using System.Web;
+using System.Web.Mvc;
+using System.Web.Routing;
+using Moq;
+using MosaicBOH.Business.Entities;
+using MosaicBOH.Business.Interfaces;
+using MosaicBOH.Web.Custom;
+
+namespace MosaicBOH.UnitTests.BaseClasses
+{
+    public class ControllerTestBase<T> : BaseUnitTest, IDisposable where T : BaseController
+    {
+        // system under test
+        protected T Controller { get; set; }
+
+        // mocks
+        protected Mock<IMenuPlanning> MockMenuPlanning { get; set; }
+        protected Mock<HttpContextBase> MockHttpContextBase { get; set; }
+        protected Mock<HttpSessionStateBase> MockHttpSessionStateBase { get; set; }
+        protected Mock<ControllerContext> MockControllerContext { get; set; }
+        protected Mock<IPrincipal> MockPrincipal { get; set; }
+
+        // runs before each test
+        public ControllerTestBase()
+        {
+            Controller = Resolve<T>();
+
+            MockMenuPlanning = CreateMock<IMenuPlanning>(true);
+            MockHttpContextBase = CreateMock<HttpContextBase>();
+            MockHttpSessionStateBase = CreateMock<HttpSessionStateBase>();
+            MockControllerContext = MockContext();
+            MockPrincipal = CreateMock<IPrincipal>();
+
+            var user = new User { UserID = Guid.NewGuid(), UserName = "test", DistrictID = Guid.Empty };
+            MockPrincipal.Setup(x => x.Identity).Returns(new GenericIdentity(user.UserName));
+            MockPrincipal.Setup(x => x.IsInRole(It.IsAny<string>())).Returns(true);
+
+            MockHttpContextBase.Setup(x => x.User).Returns(MockPrincipal.Object);
+
+            MockHttpSessionStateBase.Setup(x => x["CurrentUser"]).Returns(user);
+            MockHttpSessionStateBase.Setup(x => x["CurrentUserId"]).Returns(user.UserID);
+            MockHttpSessionStateBase.Setup(x => x["OlsonTimeZoneID"]).Returns("US/Pacific");
+
+            MockHttpContextBase.Setup(x => x.Session).Returns(MockHttpSessionStateBase.Object);
+
+            var requestContext = new RequestContext(MockHttpContextBase.Object, new RouteData());
+            Controller.ControllerContext = new ControllerContext(requestContext, Controller);
+            Controller.MenuPlanning = MockMenuPlanning.Object;
+        }
+
+        // runs after each test
+        public virtual void Dispose()
+        {
+            VerifyExpectations();
+            Controller.Dispose();
+        }
+    }
+}

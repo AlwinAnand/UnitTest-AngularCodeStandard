@@ -1,0 +1,9 @@
+namespace Boss.Domain
+{
+    /// <summary>
+    /// This is a bogus object used to separates UnitOfWorks across the different boundary contexts. Does nothing
+    /// </summary>
+    public abstract class BoundaryContextIdentifier
+    {
+    }
+}

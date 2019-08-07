@@ -1,0 +1,58 @@
+using System;
+using System.Collections.Generic;
+using System.Data.Entity;
+using System.Data.Entity.Validation;
+using System.Linq;
+using System.Text;
+using Boss.Domain;
+using Boss.Domain.Models.Core;
+
+namespace Boss.Infrastructure
+{
+    public abstract class BaseUnitOfWork<TC> : IUnitOfWork<TC> where TC : BoundaryContextIdentifier
+    {
+        readonly DbContext _context;
+
+        protected BaseUnitOfWork(DbContext context)
+        {
+            _context = context;
+        }
+
+        public void SaveChanges()
+        {
+            _context.SaveChanges();
+        }
+
+        public void Delete<T>(T obj) where T : class
+        {
+            _context.Set<T>().Remove(obj);
+        }
+
+        public void Add<T>(T obj) where T : class
+        {
+            _context.Set<T>().Add(obj);
+        }
+
+        public void Edit<T>(T obj) where T : class
+        {
+            _context.Entry(obj).State = EntityState.Modified;
+        }
+
+        public void Attach<T>(T obj) where T : class
+        {
+            var entry = _context.Entry(obj);
+            _context.Set<T>().Attach(obj);
+            entry.State = EntityState.Modified;
+        }
+
+        public void DeleteAll<T>(IEnumerable<T> obj) where T : class
+        {
+            _context.Set<T>().RemoveRange(obj);
+        }
+
+        public void AddRange<T>(IEnumerable<T> objList) where T : class
+        {
+            _context.Set<T>().AddRange(objList);
+        }
+    }
+}

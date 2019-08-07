@@ -1,0 +1,15 @@
+using Boss.Domain.Models.Core;
+using Boss.Infrastructure.Common;
+
+namespace Boss.Infrastructure.Core.Data.Repositories
+{
+    public class EFRabbitStagingMessagesRepository : BaseEntityFrameworkRepository<RabbitStagingMessage>
+    {
+        public EFRabbitStagingMessagesRepository(EFCoreContext context) :
+            base(context)
+        {
+
+        }
+
+    }
+}

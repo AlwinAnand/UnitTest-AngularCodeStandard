@@ -1,0 +1,12 @@
+using Boss.Domain.Core;
+
+namespace Boss.Infrastructure.Core.Data
+{
+    public class CoreUnitOfWork : BaseUnitOfWork<CoreBoundaryIdentifier>
+    {
+        // ReSharper disable once SuggestBaseTypeForParameter - need to be explicit here for DI to wireup
+        public CoreUnitOfWork(EFCoreContext context) : base(context)
+        {
+        }
+    }
+}
